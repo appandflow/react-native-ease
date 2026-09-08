@@ -124,6 +124,76 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         }
     }
 
+    // Drop every running loop the current props no longer ask for.
+    //
+    // The per-property paths in applyAnimateValues() only cancel an animator
+    // when the property is still in animatedProperties AND its value changed.
+    // Props that drop a property from `animate` entirely, or that keep
+    // animating it but stop asking for `loop`, hit neither gate — the infinite
+    // ValueAnimator keeps driving the view forever, even after the view is
+    // reused for different content. Treat the current props as the source of
+    // truth instead.
+    private fun removeStaleLoopAnimations(
+        opacity: Float,
+        translateX: Float,
+        translateY: Float,
+        scaleX: Float,
+        scaleY: Float,
+        rotate: Float,
+        rotateX: Float,
+        rotateY: Float,
+        borderRadius: Float,
+        borderWidth: Float,
+        elevation: Float
+    ) {
+        if (runningAnimators.isEmpty()) return
+
+        val mask = animatedProperties
+        for ((animatorKey, property) in LOOPABLE_PROPERTIES) {
+            val animator = runningAnimators[animatorKey] as? ValueAnimator ?: continue
+            if (animator.repeatCount != ValueAnimator.INFINITE) continue
+
+            val (propertyMask, configName) = property
+            val stillAnimated = mask and propertyMask != 0
+            if (stillAnimated && getTransitionConfig(configName).loop.let { it == "repeat" || it == "reverse" }) {
+                continue
+            }
+
+            animator.cancel()
+            runningAnimators.remove(animatorKey)
+
+            // cancel() strands the property wherever the sweep happened to be,
+            // so write the resting state the current props ask for. Every
+            // animate* prop carries its identity value once JS clears the mask
+            // bit, so the incoming values are correct either way. Colors are
+            // skipped — an unset color has no identity value and the style now
+            // owns it.
+            val target: Float
+            val prev: Float?
+            val apply: (Float) -> Unit
+            when (animatorKey) {
+                "alpha" -> { target = opacity; prev = prevOpacity; apply = { this.alpha = it } }
+                "translationX" -> { target = translateX; prev = prevTranslateX; apply = { this.translationX = it } }
+                "translationY" -> { target = translateY; prev = prevTranslateY; apply = { this.translationY = it } }
+                "scaleX" -> { target = scaleX; prev = prevScaleX; apply = { this.scaleX = it } }
+                "scaleY" -> { target = scaleY; prev = prevScaleY; apply = { this.scaleY = it } }
+                "rotation" -> { target = rotate; prev = prevRotate; apply = { this.rotation = it } }
+                "rotationX" -> { target = rotateX; prev = prevRotateX; apply = { this.rotationX = it } }
+                "rotationY" -> { target = rotateY; prev = prevRotateY; apply = { this.rotationY = it } }
+                "animateBorderRadius" -> { target = borderRadius; prev = prevBorderRadius; apply = { setAnimateBorderRadius(it) } }
+                "animateBorderWidth" -> { target = borderWidth; prev = prevBorderWidth; apply = { setAnimateBorderWidth(it) } }
+                "elevation" -> { target = elevation; prev = prevElevation; apply = { this.elevation = it } }
+                else -> continue
+            }
+
+            // Skip only when a path below will animate this property anyway:
+            // those read the live view value as their "from", so writing the
+            // target first would flatten the animation into a no-op.
+            if (stillAnimated && prev != null && prev != target) continue
+            apply(target)
+        }
+    }
+
     companion object {
         // Bitmask flags — must match JS constants
         const val MASK_OPACITY = 1 shl 0
@@ -140,6 +210,23 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         const val MASK_BORDER_COLOR = 1 shl 11
         // Masks 12-15 are shadow properties (iOS only)
         const val MASK_ELEVATION = 1 shl 16
+
+        // runningAnimators key → (mask bit, getTransitionConfig name)
+        private val LOOPABLE_PROPERTIES = listOf(
+            "alpha" to (MASK_OPACITY to "opacity"),
+            "translationX" to (MASK_TRANSLATE_X to "translateX"),
+            "translationY" to (MASK_TRANSLATE_Y to "translateY"),
+            "scaleX" to (MASK_SCALE_X to "scaleX"),
+            "scaleY" to (MASK_SCALE_Y to "scaleY"),
+            "rotation" to (MASK_ROTATE to "rotate"),
+            "rotationX" to (MASK_ROTATE_X to "rotateX"),
+            "rotationY" to (MASK_ROTATE_Y to "rotateY"),
+            "animateBorderRadius" to (MASK_BORDER_RADIUS to "borderRadius"),
+            "backgroundColor" to (MASK_BACKGROUND_COLOR to "backgroundColor"),
+            "animateBorderWidth" to (MASK_BORDER_WIDTH to "borderWidth"),
+            "borderColor" to (MASK_BORDER_COLOR to "borderColor"),
+            "elevation" to (MASK_ELEVATION to "elevation"),
+        )
     }
 
     // --- Transform origin (0–1 fractions) ---
@@ -473,6 +560,12 @@ class EaseView(context: Context) : ReactViewGroup(context) {
             onTransitionEnd?.invoke(true)
         } else {
             // Subsequent updates: animate changed properties (skip non-animated)
+            // Runs after the animationBatchId bump above so the cancellations
+            // can't be mistaken for this batch's animations completing.
+            removeStaleLoopAnimations(
+                opacity, translateX, translateY, scaleX, scaleY,
+                rotate, rotateX, rotateY, borderRadius, borderWidth, elevation
+            )
             var anyPropertyChanged = false
 
             if (prevOpacity != null && mask and MASK_OPACITY != 0 && prevOpacity != opacity) {

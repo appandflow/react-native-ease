@@ -153,6 +153,11 @@ export const demos: Record<string, DemoEntry> = {
     title: 'Issue #45 — Android modal background',
     section: 'Issues',
   },
+  'issue-54': {
+    route: '/issues/54',
+    title: 'Issue #54 — Stale shimmer loop',
+    section: 'Issues',
+  },
   'issue-loop-cancel': {
     route: '/issues/loop-cancel',
     title: 'Audit — Cancelled loop resurrects',

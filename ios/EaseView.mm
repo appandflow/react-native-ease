@@ -155,6 +155,66 @@ transitionConfigForProperty(const std::string &name,
   return transitionConfigFromStruct(t.defaultConfig);
 }
 
+static bool isLoopingTransition(const EaseTransitionConfig &config) {
+  return config.loop == "repeat" || config.loop == "reverse";
+}
+
+// Map a saved loop animation key back to the property it drives. Returns the
+// mask bit and writes the transition-config property name, or 0 if the key is
+// not one a loop can be saved under.
+static int easePropertyForLoopKey(NSString *key, std::string &outName) {
+  if ([key isEqualToString:kAnimKeyOpacity]) {
+    outName = "opacity";
+    return kMaskOpacity;
+  } else if ([key isEqualToString:kAnimKeyTransformTransX]) {
+    outName = "translateX";
+    return kMaskTranslateX;
+  } else if ([key isEqualToString:kAnimKeyTransformTransY]) {
+    outName = "translateY";
+    return kMaskTranslateY;
+  } else if ([key isEqualToString:kAnimKeyTransformScaleX]) {
+    outName = "scaleX";
+    return kMaskScaleX;
+  } else if ([key isEqualToString:kAnimKeyTransformScaleY]) {
+    outName = "scaleY";
+    return kMaskScaleY;
+  } else if ([key isEqualToString:kAnimKeyTransformRotateZ]) {
+    outName = "rotate";
+    return kMaskRotate;
+  } else if ([key isEqualToString:kAnimKeyTransformRotateX]) {
+    outName = "rotateX";
+    return kMaskRotateX;
+  } else if ([key isEqualToString:kAnimKeyTransformRotateY]) {
+    outName = "rotateY";
+    return kMaskRotateY;
+  } else if ([key isEqualToString:kAnimKeyCornerRadius]) {
+    outName = "borderRadius";
+    return kMaskBorderRadius;
+  } else if ([key isEqualToString:kAnimKeyBackgroundColor]) {
+    outName = "backgroundColor";
+    return kMaskBackgroundColor;
+  } else if ([key isEqualToString:kAnimKeyBorderWidth]) {
+    outName = "borderWidth";
+    return kMaskBorderWidth;
+  } else if ([key isEqualToString:kAnimKeyBorderColor]) {
+    outName = "borderColor";
+    return kMaskBorderColor;
+  } else if ([key isEqualToString:kAnimKeyShadowOpacity]) {
+    outName = "shadowOpacity";
+    return kMaskShadowOpacity;
+  } else if ([key isEqualToString:kAnimKeyShadowRadius]) {
+    outName = "shadowRadius";
+    return kMaskShadowRadius;
+  } else if ([key isEqualToString:kAnimKeyShadowColor]) {
+    outName = "shadowColor";
+    return kMaskShadowColor;
+  } else if ([key isEqualToString:kAnimKeyShadowOffset]) {
+    outName = "shadowOffset";
+    return kMaskShadowOffset;
+  }
+  return 0;
+}
+
 // Find lowest property name with a set mask bit among transform properties
 static std::string lowestTransformPropertyName(int mask) {
   if (mask & kMaskTranslateX)
@@ -372,6 +432,82 @@ static std::string lowestTransformPropertyName(int mask) {
 - (void)removeEaseAnimationForKey:(NSString *)key {
   [self.layer removeAnimationForKey:key];
   [_loopAnimations removeObjectForKey:key];
+}
+
+// Drop every saved loop the current props no longer ask for.
+//
+// The per-property paths in updateProps: only tear an animation down when the
+// property is still in animatedProperties AND its value changed. Props that
+// drop a property from `animate` entirely, or that keep animating it but stop
+// asking for `loop`, therefore hit neither gate — the infinite CAAnimation
+// stays on the layer forever, and _loopAnimations replays it on every
+// didMoveToWindow. Treat the current props as the source of truth instead.
+- (void)removeStaleLoopAnimationsForProps:(const EaseViewProps &)props {
+  if (_loopAnimations.count == 0) {
+    return;
+  }
+
+  int mask = props.animatedProperties;
+  BOOL needsTransformReset = NO;
+
+  // updateProps: already runs inside one, but didMoveToWindow does not, and
+  // the model writes below must not start implicit animations.
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+
+  for (NSString *key in [_loopAnimations.allKeys copy]) {
+    std::string propertyName;
+    int propertyMask = easePropertyForLoopKey(key, propertyName);
+    if (propertyMask == 0) {
+      continue;
+    }
+
+    BOOL stillAnimated = (mask & propertyMask) != 0;
+    if (stillAnimated &&
+        isLoopingTransition(transitionConfigForProperty(propertyName, props))) {
+      continue;
+    }
+
+    [self removeEaseAnimationForKey:key];
+
+    // Removing the animation drops the presentation layer back to the model,
+    // which still holds the loop's target — a shimmer frozen mid-sweep. Reset
+    // only when the property left animatedProperties: while it is still
+    // animated the model already holds the value the current props ask for,
+    // and writing here would cause a visible jump. Every animate* prop
+    // defaults to its identity value once JS clears the mask bit, so the
+    // current props are also the correct resting state.
+    if (stillAnimated) {
+      continue;
+    }
+    if (propertyMask & kMaskAnyTransform) {
+      // Recompose the whole matrix rather than writing a sub-key path: a
+      // transform carrying m34 perspective can't be reliably decomposed, and
+      // this keeps any sub-property that IS still animated at its own value.
+      needsTransformReset = YES;
+    } else if (propertyMask == kMaskOpacity) {
+      self.layer.opacity = props.animateOpacity;
+    } else if (propertyMask == kMaskBorderRadius) {
+      self.layer.cornerRadius = props.animateBorderRadius;
+    } else if (propertyMask == kMaskBorderWidth) {
+      self.layer.borderWidth = props.animateBorderWidth;
+    } else if (propertyMask == kMaskShadowOpacity) {
+      self.layer.shadowOpacity = props.animateShadowOpacity;
+    } else if (propertyMask == kMaskShadowRadius) {
+      self.layer.shadowRadius = props.animateShadowRadius;
+    } else if (propertyMask == kMaskShadowOffset) {
+      self.layer.shadowOffset =
+          CGSizeMake(props.animateShadowOffsetX, props.animateShadowOffsetY);
+    }
+    // Colors (background, border, shadow) are deliberately not reset: an
+    // unset SharedColor has no identity value, so writing one here would
+    // clobber a color the style is now responsible for.
+  }
+
+  if (needsTransformReset) {
+    self.layer.transform = [self targetTransformFromProps:props];
+  }
+  [CATransaction commit];
 }
 
 - (void)reapplyLoopAnimations {
@@ -887,6 +1023,9 @@ static std::string lowestTransformPropertyName(int mask) {
   } else {
     // Subsequent updates: animate changed properties
     [self beginAnimationBatch];
+    // After beginAnimationBatch so the removals below can't be mistaken for
+    // this batch's animations completing.
+    [self removeStaleLoopAnimationsForProps:newViewProps];
     BOOL anyPropertyChanged = NO;
 
     if ((mask & kMaskOpacity) &&
@@ -1242,6 +1381,12 @@ static std::string lowestTransformPropertyName(int mask) {
   // When the view re-attaches (e.g. after a react-navigation tab switch),
   // re-apply any loop animations that were running.
   if (self.window != nil && !_isFirstMount) {
+    // The snapshot may predate a props update that stopped asking for the
+    // loop, so filter it against the current props before replaying.
+    if (_props) {
+      [self removeStaleLoopAnimationsForProps:*std::static_pointer_cast<
+                                                  const EaseViewProps>(_props)];
+    }
     [self reapplyLoopAnimations];
   }
 }
