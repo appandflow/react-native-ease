@@ -58,11 +58,9 @@ CI also builds the Android, iOS, and tvOS examples. Device behavior affected by
 the release still needs device validation.
 
 After this workflow has been merged into the default branch, use **Actions →
-Release → Run workflow** for a publication-free integration test. The manual run
-executes the full reusable CI workflow, builds and validates the npm tarball,
-and uploads it as a one-day workflow artifact. The publish job only runs for a
-matching pushed tag, so a manual run cannot enter the `release` environment or
-publish to npm.
+Release → Run workflow** with `release_tag` empty for a publication-free
+integration test. The manual run executes the full reusable CI workflow, builds
+and validates the npm tarball, and uploads it as a one-day workflow artifact.
 
 The dry run cannot test npm's OIDC trust relationship because npm authenticates
 the workflow only when `npm publish` runs. Use the first intentional prerelease
@@ -99,9 +97,13 @@ move a newer dist-tag backward.
   new version. Never move a pushed release tag.
 - If a publish is interrupted, query the exact npm version before retrying. The
   workflow refuses registry errors other than a real missing-version response.
+  If the tagged workflow itself needs a fix, merge the fix to `main`, then run
+  the Release workflow manually with the existing tag in `release_tag`. It
+  checks out and validates that immutable tag before publishing its exact package.
 - npm versions cannot be overwritten. Publish a new version for any correction.
 - Do not rerun an old release to change `latest` or `next` after a newer release
   has advanced that dist-tag.
 
 Adding this workflow does not publish anything. npm publication begins only when
-a matching release tag is pushed and the protected environment is approved.
+a matching release tag is pushed, or supplied explicitly as `release_tag` to a
+manual recovery run, and the protected environment is approved.

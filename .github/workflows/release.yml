@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to publish (leave empty for a dry run)'
+        required: false
+        type: string
   pull_request:
     branches:
       - main
@@ -40,15 +45,18 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Setup
         uses: ./.github/actions/setup
 
       - name: Validate release tag
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || inputs.release_tag != ''
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
         run: |
           git merge-base --is-ancestor HEAD origin/main
-          node scripts/check-release.mjs "$GITHUB_REF_NAME"
+          node scripts/check-release.mjs "$RELEASE_TAG"
 
       - name: Build package
         run: yarn build
@@ -68,7 +76,9 @@ jobs:
           retention-days: 1
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: package
     runs-on: ubuntu-latest
     environment: release
@@ -91,12 +101,14 @@ jobs:
 
       - name: Publish with npm trusted publishing
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
         run: |
           set -euo pipefail
 
           package_name=react-native-ease
-          version="${GITHUB_REF_NAME#v}"
-          tarball="artifacts/$package_name-$version.tgz"
+          version="${RELEASE_TAG#v}"
+          tarball="./artifacts/$package_name-$version.tgz"
           dist_tag=latest
           if [[ "$version" == *-* ]]; then dist_tag=next; fi
 
