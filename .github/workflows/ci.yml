@@ -1,5 +1,6 @@
 name: CI
 on:
+  workflow_call:
   push:
     branches:
       - main
@@ -54,8 +55,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Build package
-        run: yarn prepare
+      - name: Build and inspect npm package
+        run: |
+          yarn build
+          mkdir artifacts
+          npm pack --ignore-scripts --pack-destination artifacts
+          node scripts/check-package.mjs artifacts/*.tgz
 
   build-android:
     runs-on: ubuntu-latest
@@ -98,7 +103,6 @@ jobs:
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
 
-
       - name: Cache Gradle
         if: env.turbo_cache_hit != 1
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
@@ -112,7 +116,7 @@ jobs:
 
       - name: Build example for Android
         env:
-          JAVA_OPTS: "-XX:MaxHeapSize=6g"
+          JAVA_OPTS: '-XX:MaxHeapSize=6g'
         run: |
           yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}"
 

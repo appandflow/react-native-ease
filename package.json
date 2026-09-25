@@ -49,6 +49,7 @@
     "docs:build": "yarn --cwd docs build",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
+    "build": "bob build",
     "test": "jest",
     "lint": "yarn lint:eslint && yarn lint:ts && yarn lint:ts:example",
     "lint:ts": "tsc",
@@ -187,7 +188,7 @@
       "tagName": "v${version}"
     },
     "npm": {
-      "publish": true
+      "publish": false
     },
     "github": {
       "release": true
