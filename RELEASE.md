@@ -4,27 +4,6 @@ This repository publishes one npm package, `react-native-ease`. The example and
 documentation site are not published to npm. Keep this document aligned with
 [the Release workflow](.github/workflows/release.yml).
 
-## One-time trusted-publisher setup
-
-Configure a GitHub Actions trusted publisher in the npm package settings:
-
-| Field             | Value                                |
-| ----------------- | ------------------------------------ |
-| Organization      | `appandflow`                         |
-| Repository        | `react-native-ease`                  |
-| Workflow filename | `release.yml`                        |
-| Environment       | `release`                            |
-| Allowed action    | Direct publishing with `npm publish` |
-
-The workflow uses npm's OpenID Connect integration and does not need an npm
-write token. It publishes with Node 24 and npm provenance. See
-[npm's trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
-
-Create the GitHub `release` environment, require a maintainer review, and limit
-deployment tags to `v*`. Declaring the environment in the workflow does not
-create its protection rules, and the npm trust relationship must also be
-configured separately.
-
 ## Prepare and verify a candidate
 
 Start from reviewed, current `main`. Check npm before choosing a version; a Git
