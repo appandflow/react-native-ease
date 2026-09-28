@@ -57,15 +57,6 @@ node scripts/check-release.mjs vX.Y.Z
 CI also builds the Android, iOS, and tvOS examples. Device behavior affected by
 the release still needs device validation.
 
-After this workflow has been merged into the default branch, use **Actions →
-Release → Run workflow** with `release_tag` empty for a publication-free
-integration test. The manual run executes the full reusable CI workflow, builds
-and validates the npm tarball, and uploads it as a one-day workflow artifact.
-
-The dry run cannot test npm's OIDC trust relationship because npm authenticates
-the workflow only when `npm publish` runs. Use the first intentional prerelease
-to validate trusted publishing end to end.
-
 ## Tag and publish
 
 1. Run `yarn release X.Y.Z` from current `main`. `release-it` creates the release
@@ -93,17 +84,18 @@ move a newer dist-tag backward.
 - If authentication fails, verify the npm publisher's organization, repository,
   workflow filename, and environment. Do not add a long-lived npm token as a
   workaround.
-- If validation fails before publication, fix the issue on `main` and prepare a
-  new version. Never move a pushed release tag.
-- If a publish is interrupted, query the exact npm version before retrying. The
-  workflow refuses registry errors other than a real missing-version response.
-  If the tagged workflow itself needs a fix, merge the fix to `main`, then run
-  the Release workflow manually with the existing tag in `release_tag`. It
-  checks out and validates that immutable tag before publishing its exact package.
-- npm versions cannot be overwritten. Publish a new version for any correction.
-- Do not rerun an old release to change `latest` or `next` after a newer release
-  has advanced that dist-tag.
+- Retry a failed publish with `gh run rerun RUN_ID --failed`. This reuses the
+  inspected tarball, retained for seven days, without repeating native CI.
+- npm processing can take several minutes. The workflow allows approximately
+  ten minutes for verification after acceptance. If verification times out,
+  inspect the exact npm version before retrying with the same artifact.
+- If the artifact has expired, rerun all jobs. A rerun uses the original workflow
+  revision, including its checkout and scripts. Merging a workflow fix does not
+  update an existing run.
+- Never move an already-published tag. npm versions cannot be overwritten;
+  publish a new version for corrections to a published package.
+- An existing version is skipped only when its integrity matches the saved
+  tarball. This does not change `latest` or `next`.
 
-Adding this workflow does not publish anything. npm publication begins only when
-a matching release tag is pushed, or supplied explicitly as `release_tag` to a
-manual recovery run, and the protected environment is approved.
+Adding this workflow does not publish anything. Publication requires a matching
+`v*` tag push, successful CI, and approval of the protected release environment.
