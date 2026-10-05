@@ -87,7 +87,7 @@ Use this table to convert Reanimated/Animated patterns to EaseView:
 | `entering={SlideInLeft}` / `SlideInRight`                                                                                 | `initialAnimate={{ translateX: ±value }}` + `animate={{ translateX: 0 }}`                                    |
 | `entering={SlideInUp}` / `SlideInDown`                                                                                    | `initialAnimate={{ translateY: ±value }}` + `animate={{ translateY: 0 }}`                                    |
 | `entering={ZoomIn}`                                                                                                       | `initialAnimate={{ scale: 0 }}` + `animate={{ scale: 1 }}`                                                   |
-| `exiting={FadeOut}` / other exit animations                                                                               | State-driven exit: boolean state + `onTransitionEnd` to unmount (flag as "requires state changes" in report) |
+| `exiting={FadeOut}` / other exit animations                                                                               | `EasePresence` + `exit={{ ... }}` on `EaseView` with a stable `key` |
 | `withRepeat(withTiming(...), -1, false)`                                                                                  | `transition={{ type: 'timing', ..., loop: 'repeat' }}` + `initialAnimate` for start value                    |
 | `withRepeat(withTiming(...), -1, true)`                                                                                   | `transition={{ type: 'timing', ..., loop: 'reverse' }}` + `initialAnimate` for start value                   |
 | `Easing.linear`                                                                                                           | `easing: 'linear'`                                                                                           |
@@ -219,7 +219,7 @@ Format:
 **Current:** Brief description of what the animation does and which API it uses
 **Proposed:** What the EaseView equivalent looks like (include exact transition values with mapped defaults)
 **Changes:** What will be added/removed/modified
-**Note:** (only if applicable) "Requires state changes for exit animation" or other caveats
+**Note:** (only if applicable) "Needs `EasePresence` wrapper + stable keys for exit animation" or other caveats
 
 ### Not Migratable (will be skipped)
 

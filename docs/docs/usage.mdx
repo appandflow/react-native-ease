@@ -225,6 +225,26 @@ Loop requires `initialAnimate` to define the starting value. Spring animations d
 />
 ```
 
+## Exit animations
+
+Use `EasePresence` + `exit` to animate before unmount.
+
+```tsx
+<EasePresence>
+  {visible ? (
+    <EaseView
+      key="toast"
+      animate={{ opacity: 1, translateY: 0 }}
+      exit={{ opacity: 0, translateY: 12 }}
+      transition={{ type: 'timing', duration: 220, easing: 'easeOut' }}
+    />
+  ) : null}
+</EasePresence>
+```
+
+- Child elements must have stable keys.
+- Avoid `transition.loop` (`repeat`/`reverse`) on exiting views.
+
 ## Delay
 
 ```tsx

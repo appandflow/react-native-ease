@@ -104,6 +104,8 @@ function FadeCard({ visible, children }) {
 
 `EaseView` works like a regular `View` — it accepts children, styles, and all standard view props. When values in `animate` change, it smoothly transitions to the new values using native platform animations.
 
+For unmount/exit animations, wrap keyed children in `EasePresence` and provide `exit` on `EaseView`.
+
 ## Why
 
 ### Goals
@@ -422,6 +424,30 @@ Use `initialAnimate` to set starting values. On mount, the view starts at `initi
 ```
 
 Without `initialAnimate`, the view renders at the `animate` values immediately with no animation on mount.
+
+### Exit Animations
+
+Use `EasePresence` + `exit` to animate before unmount. `EasePresence` keeps removed keyed children mounted until `onTransitionEnd({ finished: true })`.
+
+```tsx
+import { EasePresence, EaseView } from 'react-native-ease';
+
+<EasePresence>
+  {visible ? (
+    <EaseView
+      key="toast"
+      animate={{ opacity: 1, translateY: 0 }}
+      exit={{ opacity: 0, translateY: 12 }}
+      transition={{ type: 'timing', duration: 220, easing: 'easeOut' }}
+    />
+  ) : null}
+</EasePresence>
+```
+
+Notes:
+
+- Child elements must have stable keys.
+- Avoid `transition.loop` on exiting views (`repeat`/`reverse` never complete).
 
 ### Delay
 

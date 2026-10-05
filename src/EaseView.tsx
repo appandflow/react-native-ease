@@ -199,6 +199,8 @@ export type EaseViewProps = ViewProps & {
   animate?: AnimateProps;
   /** Starting values for enter animations. Animates to `animate` on mount. */
   initialAnimate?: AnimateProps;
+  /** Target values for exit animations. Used by `EasePresence` before unmount. */
+  exit?: AnimateProps;
   /** Animation configuration (timing or spring). */
   transition?: Transition;
   /** Called when all animations complete. Reports whether they finished naturally or were interrupted. */
@@ -241,6 +243,7 @@ export type EaseViewProps = ViewProps & {
 export function EaseView({
   animate,
   initialAnimate,
+  exit: _exit,
   transition,
   onTransitionEnd,
   useHardwareLayer = false,

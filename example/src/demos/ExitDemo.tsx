@@ -1,46 +1,39 @@
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { EaseView, type TransitionEndEvent } from 'react-native-ease';
+import { EasePresence, EaseView } from 'react-native-ease';
 
 import { Section } from '../components/Section';
 import { Button } from '../components/Button';
 
 export function ExitDemo() {
   const [show, setShow] = useState(true);
-  const [exiting, setExiting] = useState(false);
-
-  const handleTransitionEnd = ({ finished }: TransitionEndEvent) => {
-    if (finished) {
-      setShow(false);
-      setExiting(false);
-    }
-  };
 
   return (
     <Section title="Exit Animation">
       <View style={styles.exitContainer}>
-        {show && (
-          <EaseView
-            animate={{
-              opacity: exiting ? 0 : 1,
-              scale: exiting ? 0.8 : 1,
-              translateY: exiting ? 20 : 0,
-            }}
-            transition={{ type: 'timing', duration: 300, easing: 'easeIn' }}
-            onTransitionEnd={exiting ? handleTransitionEnd : undefined}
-            style={styles.box}
-          />
-        )}
+        <EasePresence>
+          {show ? (
+            <EaseView
+              key="exit-box"
+              animate={{
+                opacity: 1,
+                scale: 1,
+                translateY: 0,
+              }}
+              exit={{
+                opacity: 0,
+                scale: 0.8,
+                translateY: 20,
+              }}
+              transition={{ type: 'timing', duration: 300, easing: 'easeIn' }}
+              style={styles.box}
+            />
+          ) : null}
+        </EasePresence>
       </View>
       <Button
         label={show ? 'Remove' : 'Show Again'}
-        onPress={() => {
-          if (show) {
-            setExiting(true);
-          } else {
-            setShow(true);
-          }
-        }}
+        onPress={() => setShow((value: boolean) => !value)}
       />
     </Section>
   );

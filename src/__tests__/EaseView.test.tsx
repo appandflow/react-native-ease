@@ -124,6 +124,19 @@ describe('EaseView', () => {
       expect(props.initialAnimateScaleX).toBe(1);
       expect(props.initialAnimateScaleY).toBe(1);
     });
+
+    it('does not forward exit prop to native component', () => {
+      render(
+        <EaseView
+          testID="ease"
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        />,
+      );
+      const props = getNativeProps();
+      expect(props.exit).toBeUndefined();
+      expect(props.animateOpacity).toBe(1);
+    });
   });
 
   describe('transition defaults', () => {

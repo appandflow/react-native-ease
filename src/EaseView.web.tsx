@@ -118,6 +118,8 @@ const SPRING_FALLBACK_EASING = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 export type EaseViewProps = {
   animate?: AnimateProps;
   initialAnimate?: AnimateProps;
+  /** Target values for exit animations. Used by `EasePresence` before unmount. */
+  exit?: AnimateProps;
   transition?: Transition;
   onTransitionEnd?: (event: TransitionEndEvent) => void;
   /** No-op on web. */

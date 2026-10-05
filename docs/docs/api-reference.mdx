@@ -11,6 +11,7 @@ A `View` that animates property changes using native platform APIs.
 | ------------------ | ---------------------------- | ----------- |
 | `animate`          | `AnimateProps`               | Target values for animated properties |
 | `initialAnimate`   | `AnimateProps`               | Starting values for enter animations |
+| `exit`             | `AnimateProps`               | Target values for unmount animations (used by `EasePresence`) |
 | `transition`       | `Transition`                 | Single config or per-property map |
 | `onTransitionEnd`  | `(event) => void`            | Called when all animations complete with `{ finished: boolean }` |
 | `transformOrigin`  | `{ x?: number; y?: number }` | Pivot point for scale/rotation as 0–1 fractions |
@@ -20,6 +21,14 @@ A `View` that animates property changes using native platform APIs.
 | `style`            | `ViewStyle`                  | Non-animated styles |
 | `children`         | `ReactNode`                  | Child elements |
 | `...rest`          | `ViewProps`                  | All other standard View props |
+
+## `<EasePresence>`
+
+Wrap keyed children to run `exit` animations before unmount.
+
+| Prop       | Type        | Description |
+| ---------- | ----------- | ----------- |
+| `children` | `ReactNode` | Keyed `EaseView` children to retain while their exit animations run |
 
 ## `AnimateProps`
 

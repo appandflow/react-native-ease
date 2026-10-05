@@ -1,5 +1,7 @@
 export { EaseView } from './EaseView';
 export type { EaseViewProps } from './EaseView';
+export { EasePresence } from './EasePresence';
+export type { EasePresenceProps } from './EasePresence';
 export type {
   AnimateProps,
   CubicBezier,
