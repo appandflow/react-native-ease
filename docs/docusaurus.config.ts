@@ -21,7 +21,7 @@ const config: Config = {
       'classic',
       {
         docs: {
-          routeBasePath: '/',
+          routeBasePath: '/docs',
           sidebarPath: './sidebars.ts',
           editUrl:
             'https://github.com/AppAndFlow/react-native-ease/tree/main/docs/',
@@ -33,7 +33,7 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    image: 'img/opengraph-image.png',
+    image: 'img/github-banner.png',
     colorMode: {
       defaultMode: 'light',
       disableSwitch: false,
