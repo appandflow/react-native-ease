@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'React Native Ease',
   tagline: 'Lightweight declarative animations powered by platform APIs',
-  favicon: 'img/favicon.png',
+  favicon: 'img/app-icon.png',
   url: 'https://appandflow.github.io',
   baseUrl: '/react-native-ease/',
   organizationName: 'AppAndFlow',

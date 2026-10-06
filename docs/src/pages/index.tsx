@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Head from '@docusaurus/Head';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
@@ -21,6 +21,15 @@ const navStyle: React.CSSProperties = {
 
 export default function Home() {
   const fontBase = useBaseUrl('/fonts/');
+  const [sheetLoaded, setSheetLoaded] = useState(false);
+  const sheetContainer = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Cached images can finish loading before React attaches the load handler.
+    const image = sheetContainer.current?.querySelector('img');
+    if (image?.complete && image.naturalWidth > 0) {
+      setSheetLoaded(true);
+    }
+  }, []);
   return (
     <LayoutProvider>
       <PageMetadata
@@ -37,6 +46,11 @@ export default function Home() {
           .ease-grid { display: grid; grid-template-columns: minmax(0, 520px) minmax(335px, 1fr); grid-template-areas: 'hero phone' 'features phone'; column-gap: 60px; }
           .ease-hero::after { content: ''; position: absolute; left: calc(-1 * var(--ease-inset)); right: calc(-100vw + var(--ease-inset) + 100%); bottom: 0; height: 1px; background: #f0f0f0; pointer-events: none; }
           .ease-phone { position: relative; width: 100%; margin-top: -38px; margin-bottom: 23px; justify-self: center; transform: translateX(62px); }
+          @keyframes ease-sheet-up {
+            from { transform: translateY(calc(100% + 40px)); }
+            to { transform: translateY(0); }
+          }
+          .ease-bottom-sheet-enter { animation: ease-sheet-up 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
           .ease-page a:hover { text-decoration: underline; text-underline-offset: 4px; }
           .ease-page :focus-visible { outline: 2px solid #008cff; outline-offset: 5px; border-radius: 3px; }
           .ease-copy-button { transition: transform 200ms ease; }
@@ -47,6 +61,7 @@ export default function Home() {
             .ease-copy-button:hover { transform: scale(1.15); }
           }
           @media (prefers-reduced-motion: reduce) {
+            .ease-bottom-sheet-enter { animation: none; }
             .ease-copy-button { transition: none; }
             .ease-page .ease-get-started { transition: none; }
           }
@@ -227,11 +242,38 @@ export default function Home() {
           >
             <Illustration
               file="phone.png"
-              alt="Ease phone illustration: React logo, native animation statistics, and an Ease versus Reanimated latency comparison."
+              alt="Phone outline"
               width={336}
               height={780}
               style={{ display: 'block', width: '100%', height: 'auto' }}
             />
+            <div
+              ref={sheetContainer}
+              style={{
+                position: 'absolute',
+                inset: '1% 2.4%',
+                overflow: 'hidden',
+                borderRadius: '17% / 7%',
+                pointerEvents: 'none',
+              }}
+            >
+              <Illustration
+                file="bottom-sheet.png"
+                alt="Ease versus Reanimated latency comparison"
+                width={894}
+                height={723}
+                onLoad={() => setSheetLoaded(true)}
+                className={sheetLoaded ? 'ease-bottom-sheet-enter' : undefined}
+                style={{
+                  position: 'absolute',
+                  left: '3.3%',
+                  bottom: '3.5%',
+                  width: '93.4%',
+                  height: 'auto',
+                  visibility: sheetLoaded ? 'visible' : 'hidden',
+                }}
+              />
+            </div>
           </figure>
           <FeatureList />
         </main>
