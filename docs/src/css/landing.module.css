@@ -41,12 +41,14 @@
   display: flex;
 }
 
-.productName {
+.productName,
+.productName:hover {
   color: #828282;
   white-space: nowrap;
 }
 
-.githubLink {
+.githubLink,
+.githubLink:hover {
   color: #828282;
   white-space: nowrap;
   display: inline-flex;
@@ -54,7 +56,8 @@
   gap: 5px;
 }
 
-.navLink {
+.navLink,
+.navLink:hover {
   color: #828282;
   white-space: nowrap;
 }
@@ -96,7 +99,8 @@
   margin-top: auto;
 }
 
-.getStarted {
+.getStarted,
+.getStarted:hover {
   padding: 8px 16px;
   border-radius: 40px;
   background: #121212;
@@ -121,7 +125,8 @@
   text-decoration: underline;
 }
 
-.licenseLink {
+.licenseLink,
+.licenseLink:hover {
   color: #828282;
 }
 
@@ -284,7 +289,8 @@
   line-height: 24px;
 }
 
-.featureLink {
+.featureLink,
+.featureLink:hover {
   display: flex;
   align-items: center;
   gap: 4px;
