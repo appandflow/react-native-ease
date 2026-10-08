@@ -19,15 +19,111 @@ const navStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
+type IntroPhase = 'logo' | 'island' | 'numbers' | 'sheet' | 'done';
+
 export default function Home() {
   const fontBase = useBaseUrl('/fonts/');
   const [sheetLoaded, setSheetLoaded] = useState(false);
   const sheetContainer = useRef<HTMLDivElement>(null);
+  const [islandLoaded, setIslandLoaded] = useState(false);
+  const islandContainer = useRef<HTMLDivElement>(null);
+  const [introPhase, setIntroPhase] = useState<IntroPhase>('logo');
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [circleLoaded, setCircleLoaded] = useState(false);
+  const [introStarted, setIntroStarted] = useState(false);
+  const phoneContainer = useRef<HTMLElement>(null);
+  const logoReady =
+    logoLoaded && circleLoaded && (introStarted || introPhase === 'done');
+  const logoContainer = useRef<HTMLDivElement>(null);
+  const showIsland = islandLoaded && introPhase !== 'logo';
+  const showSheet =
+    sheetLoaded &&
+    (introPhase === 'numbers' ||
+      introPhase === 'sheet' ||
+      introPhase === 'done');
+  const [islandNumbers, setIslandNumbers] = useState({ size: '0', fps: '0' });
   useEffect(() => {
+    if (introStarted) return;
+    const phone = phoneContainer.current;
+    if (!phone) return;
+    const desktop = window.matchMedia('(min-width: 801px)');
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry && entry.intersectionRatio >= 0.5) {
+          setIntroStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 },
+    );
+    const updateTrigger = () => {
+      if (desktop.matches) {
+        setIntroStarted(true);
+        observer.disconnect();
+      } else {
+        observer.observe(phone);
+      }
+    };
+    updateTrigger();
+    desktop.addEventListener('change', updateTrigger);
+    return () => {
+      observer.disconnect();
+      desktop.removeEventListener('change', updateTrigger);
+    };
+  }, [introStarted]);
+  useEffect(() => {
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let timer: number | undefined;
+    const showFinalNumbers = () => {
+      window.clearInterval(timer);
+      setIslandNumbers({ size: '2', fps: '120' });
+      setIntroPhase('done');
+    };
+    if (motion.matches) {
+      showFinalNumbers();
+    } else if (introPhase === 'numbers') {
+      const startedAt = performance.now();
+      timer = window.setInterval(() => {
+        const elapsed = performance.now() - startedAt;
+        const progress = Math.min(elapsed / 600, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setIslandNumbers({
+          size: String(Math.round(2 * eased)),
+          fps: String(Math.round(120 * eased)),
+        });
+        if (progress === 1) {
+          window.clearInterval(timer);
+          setIntroPhase('sheet');
+        }
+      }, 30);
+    }
+    const stopForReducedMotion = () => {
+      if (motion.matches) showFinalNumbers();
+    };
+    motion.addEventListener('change', stopForReducedMotion);
+    return () => {
+      window.clearInterval(timer);
+      motion.removeEventListener('change', stopForReducedMotion);
+    };
+  }, [introPhase]);
+  useEffect(() => {
+    const logo =
+      logoContainer.current?.querySelector<HTMLImageElement>(
+        'img[alt="React"]',
+      );
+    if (logo?.complete && logo.naturalWidth > 0) setLogoLoaded(true);
+    const circle = logoContainer.current?.querySelector<HTMLImageElement>(
+      'img[src$="rn-circle.png"]',
+    );
+    if (circle?.complete && circle.naturalWidth > 0) setCircleLoaded(true);
     // Cached images can finish loading before React attaches the load handler.
     const image = sheetContainer.current?.querySelector('img');
     if (image?.complete && image.naturalWidth > 0) {
       setSheetLoaded(true);
+    }
+    const island = islandContainer.current?.querySelector('img');
+    if (island?.complete && island.naturalWidth > 0) {
+      setIslandLoaded(true);
     }
   }, []);
   return (
@@ -51,6 +147,31 @@ export default function Home() {
             to { transform: translateY(0); }
           }
           .ease-bottom-sheet-enter { animation: ease-sheet-up 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+          @keyframes ease-circle-spin {
+            to { transform: rotate(360deg); }
+          }
+          @keyframes ease-circle-reveal {
+            from { opacity: 0; scale: 0.8; }
+            to { opacity: 1; scale: 1; }
+          }
+          .ease-rn-circle { animation: ease-circle-reveal 600ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both, ease-circle-spin 20s linear infinite; }
+          @keyframes ease-logo-enter {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          }
+          .ease-rn-logo { animation: ease-logo-enter 600ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both; }
+          @keyframes ease-island-expand {
+            0% { clip-path: inset(5.3% 35.1% 67% 34.6% round 999px); transform: scale(1); }
+            65% { clip-path: inset(0 round 13.1% / 41.5%); transform: scale(1.035, 1.08); }
+            82% { clip-path: inset(0 round 13.1% / 41.5%); transform: scale(0.99, 0.97); }
+            100% { clip-path: inset(0 round 13.1% / 41.5%); transform: scale(1); }
+          }
+          @keyframes ease-island-reveal {
+            from { opacity: 0; filter: blur(5px); }
+            to { opacity: 1; filter: blur(0); }
+          }
+          .ease-island-enter { animation: ease-island-expand 600ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both; }
+          .ease-island-enter .ease-island-stats { animation: ease-island-reveal 300ms ease-out 550ms both; }
           .ease-page a:hover { text-decoration: underline; text-underline-offset: 4px; }
           .ease-page :focus-visible { outline: 2px solid #008cff; outline-offset: 5px; border-radius: 3px; }
           .ease-copy-button { transition: transform 200ms ease; }
@@ -61,6 +182,9 @@ export default function Home() {
             .ease-copy-button:hover { transform: scale(1.15); }
           }
           @media (prefers-reduced-motion: reduce) {
+            .ease-island-enter, .ease-island-enter .ease-island-stats { animation: none; }
+            .ease-rn-circle { animation: none; }
+            .ease-rn-logo { animation: none; }
             .ease-bottom-sheet-enter { animation: none; }
             .ease-copy-button { transition: none; }
             .ease-page .ease-get-started { transition: none; }
@@ -73,13 +197,22 @@ export default function Home() {
             .ease-phone { transform: none; }
           }
           @media (max-width: 800px) {
+            .ease-page { --ease-inset: 23px; }
             .ease-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hero' 'phone' 'features'; }
-            .ease-phone { margin: 32px auto 0; }
-            .ease-navigation { padding-top: 24px !important; padding-bottom: 24px !important; gap: 12px !important; }
-            .ease-mark { position: static !important; margin-right: 4px; }
-            .ease-hero { min-height: 300px !important; }
-            .ease-hero::after { right: calc(-1 * var(--ease-inset)); }
-            .ease-features { padding-top: 40px !important; }
+            .ease-phone { width: 210px; margin: 24px auto 32px; }
+            .ease-navigation { display: grid !important; grid-template-columns: 45px max-content max-content 1fr; height: 53px; min-height: 0 !important; margin-top: 56px; border-top: 1px solid #f0f0f0; padding: 0 23px 0 0 !important; gap: 0 16px !important; }
+            .ease-mark { position: static !important; grid-row: 1; justify-content: center; align-self: stretch; align-items: center; border-right: 1px solid #f0f0f0; }
+            .ease-mark img { width: 12px; height: 12px; }
+            .ease-product-name { display: none; }
+            .ease-page-guide { display: none; }
+            .ease-hero { min-height: auto !important; padding-top: 32px !important; padding-bottom: 0 !important; }
+            .ease-hero h1 { font-size: 24px !important; line-height: 1.2 !important; letter-spacing: -0.96px !important; }
+            .ease-hero > p { margin-bottom: 0 !important; }
+            .ease-hero-actions { flex-direction: column; align-items: flex-start !important; gap: 16px !important; margin-top: 16px !important; }
+            .ease-hero::after { display: none; }
+            .ease-features { position: relative; padding-top: 40px !important; }
+            .ease-features::before { content: ''; position: absolute; top: 0; left: calc(-1 * var(--ease-inset)); right: calc(-1 * var(--ease-inset)); border-top: 1px solid #f0f0f0; }
+            .ease-features > div { gap: 48px !important; }
           }
         `}</style>
       </Head>
@@ -98,6 +231,7 @@ export default function Home() {
       >
         <div
           aria-hidden="true"
+          className="ease-page-guide"
           style={{
             position: 'absolute',
             left: 'max(12px, calc(var(--ease-inset) - 30px))',
@@ -136,7 +270,7 @@ export default function Home() {
           >
             <Illustration file="mark.svg" width={24} height={24} />
           </Link>
-          <Link to="/" style={navStyle}>
+          <Link to="/" className="ease-product-name" style={navStyle}>
             react-native-ease
           </Link>
           <Link
@@ -204,6 +338,7 @@ export default function Home() {
               already have.
             </p>
             <div
+              className="ease-hero-actions"
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -230,6 +365,7 @@ export default function Home() {
             </div>
           </header>
           <figure
+            ref={phoneContainer}
             className="ease-phone"
             style={{
               gridArea: 'phone',
@@ -248,6 +384,184 @@ export default function Home() {
               style={{ display: 'block', width: '100%', height: 'auto' }}
             />
             <div
+              ref={islandContainer}
+              className={showIsland ? 'ease-island-enter' : undefined}
+              onAnimationEnd={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  event.animationName === 'ease-island-expand'
+                ) {
+                  setIntroPhase((phase) =>
+                    phase === 'island' ? 'numbers' : phase,
+                  );
+                }
+              }}
+              style={{
+                position: 'absolute',
+                left: '5.37%',
+                top: '2.31%',
+                width: '88.9%',
+                aspectRatio: '894 / 282',
+                containerType: 'inline-size',
+                pointerEvents: 'none',
+                visibility: showIsland ? 'visible' : 'hidden',
+                color: '#fff',
+                lineHeight: 1.2,
+                transformOrigin: '50% 0%',
+              }}
+            >
+              <Illustration
+                file="ios-island.png"
+                width={894}
+                height={282}
+                onLoad={() => setIslandLoaded(true)}
+                style={{ display: 'block', width: '100%', height: 'auto' }}
+              />
+              <div
+                className="ease-island-stats"
+                style={{ position: 'absolute', inset: 0 }}
+              >
+                <div
+                  style={{ position: 'absolute', left: '8.72%', top: '24.47%' }}
+                >
+                  <div
+                    style={{
+                      fontSize: '6.71cqw',
+                      fontWeight: 600,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    0%
+                  </div>
+                  <div
+                    style={{
+                      marginTop: '1.68cqw',
+                      fontSize: '3.36cqw',
+                      color: 'rgba(255,255,255,0.6)',
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    JS Thread
+                    <br />
+                    Utilization
+                  </div>
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '31%',
+                    right: '31%',
+                    top: '52.23%',
+                    textAlign: 'center',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  <div
+                    role="img"
+                    aria-label="Approximately 2 kilobytes"
+                    style={{
+                      fontSize: '4.7cqw',
+                      fontWeight: 500,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    <span aria-hidden="true">~{islandNumbers.size}KB</span>
+                  </div>
+                  <div style={{ fontSize: '2.35cqw', fontWeight: 500 }}>
+                    Bundle Size impact
+                  </div>
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: '9.73%',
+                    top: '24.47%',
+                    textAlign: 'right',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  <div
+                    role="img"
+                    aria-label="120 frames per second"
+                    style={{
+                      fontSize: '6.71cqw',
+                      fontWeight: 600,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    <span aria-hidden="true">{islandNumbers.fps}</span>
+                    <span
+                      aria-hidden="true"
+                      style={{ fontSize: '4.03cqw', marginLeft: '0.67cqw' }}
+                    >
+                      fps
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: '1.68cqw',
+                      fontSize: '3.36cqw',
+                      color: 'rgba(255,255,255,0.6)',
+                    }}
+                  >
+                    Frame rate
+                    <br />
+                    (per second)
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              ref={logoContainer}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '39.65%',
+                width: '82.53%',
+                aspectRatio: '1',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+              }}
+            >
+              <Illustration
+                file="rn-circle.png"
+                className={logoReady ? 'ease-rn-circle' : undefined}
+                onLoad={() => setCircleLoaded(true)}
+                width={830}
+                height={830}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: 'auto',
+                  visibility: logoReady ? 'visible' : 'hidden',
+                }}
+              />
+              <Illustration
+                file="rn-logo.png"
+                className={logoReady ? 'ease-rn-logo' : undefined}
+                onLoad={() => setLogoLoaded(true)}
+                onAnimationEnd={(event) => {
+                  if (event.animationName === 'ease-logo-enter') {
+                    setIntroPhase((phase) =>
+                      phase === 'logo' ? 'island' : phase,
+                    );
+                  }
+                }}
+                alt="React"
+                width={409}
+                height={368}
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  visibility: logoReady ? 'visible' : 'hidden',
+                  width: '49.28%',
+                  height: 'auto',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+            </div>
+            <div
               ref={sheetContainer}
               style={{
                 position: 'absolute',
@@ -263,14 +577,21 @@ export default function Home() {
                 width={894}
                 height={723}
                 onLoad={() => setSheetLoaded(true)}
-                className={sheetLoaded ? 'ease-bottom-sheet-enter' : undefined}
+                className={showSheet ? 'ease-bottom-sheet-enter' : undefined}
+                onAnimationEnd={(event) => {
+                  if (event.animationName === 'ease-sheet-up') {
+                    setIntroPhase((phase) =>
+                      phase === 'sheet' ? 'done' : phase,
+                    );
+                  }
+                }}
                 style={{
                   position: 'absolute',
                   left: '3.3%',
                   bottom: '3.5%',
                   width: '93.4%',
                   height: 'auto',
-                  visibility: sheetLoaded ? 'visible' : 'hidden',
+                  visibility: showSheet ? 'visible' : 'hidden',
                 }}
               />
             </div>
