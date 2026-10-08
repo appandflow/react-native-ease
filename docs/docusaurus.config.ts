@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'React Native Ease',
   tagline: 'Lightweight declarative animations powered by platform APIs',
-  favicon: 'img/favicon.png',
+  favicon: 'img/app-icon.png',
   url: 'https://appandflow.github.io',
   baseUrl: '/react-native-ease/',
   organizationName: 'AppAndFlow',
@@ -21,7 +21,7 @@ const config: Config = {
       'classic',
       {
         docs: {
-          routeBasePath: '/',
+          routeBasePath: '/docs',
           sidebarPath: './sidebars.ts',
           editUrl:
             'https://github.com/AppAndFlow/react-native-ease/tree/main/docs/',
@@ -33,7 +33,7 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    image: 'img/opengraph-image.png',
+    image: 'img/github-banner.png',
     colorMode: {
       defaultMode: 'light',
       disableSwitch: false,
