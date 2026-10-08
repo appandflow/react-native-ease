@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import styles from '../../css/landing.module.css';
 import Illustration from './Illustration';
 
 export default function CopyInstallCommand({
@@ -23,68 +24,28 @@ export default function CopyInstallCommand({
   }
 
   return (
-    <div style={{ position: 'relative', minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <code
-          style={{
-            padding: 0,
-            border: 0,
-            background: 'transparent',
-            color: '#828282',
-            fontFamily: '"JetBrains Mono", monospace',
-            fontSize: 12,
-            overflowWrap: 'anywhere',
-          }}
-        >
-          {command}
-        </code>
+    <div className={styles.install} data-copied={copied}>
+      <div className={styles.installRow}>
+        <code className={styles.command}>{command}</code>
         <button
           type="button"
-          className="ease-copy-button"
+          className={styles.copyButton}
           onClick={copy}
           aria-label={copied ? 'Copied' : 'Copy install command'}
           title={copied ? 'Copied' : 'Copy install command'}
-          style={{
-            display: 'grid',
-            placeItems: 'center',
-            flexShrink: 0,
-            width: 32,
-            height: 32,
-            padding: 8,
-            border: 0,
-            background: 'transparent',
-            cursor: 'pointer',
-            color: '#008cff',
-          }}
         >
-          <span
-            aria-hidden="true"
-            style={{ display: 'grid', width: 16, height: 16 }}
-          >
+          <span aria-hidden="true" className={styles.copyIcons}>
             <Illustration
               file="copy.svg"
               width={12}
               height={12}
-              style={{
-                gridArea: '1 / 1',
-                placeSelf: 'center',
-                opacity: copied ? 0 : 1,
-                transform: copied ? 'scale(0.33)' : 'scale(1)',
-                transition: 'all var(--ifm-transition-fast) ease',
-              }}
+              className={styles.copyIcon}
             />
             <svg
               viewBox="0 0 24 24"
               width={16}
               height={16}
-              style={{
-                gridArea: '1 / 1',
-                color: '#00d600',
-                opacity: copied ? 1 : 0,
-                transform: copied ? 'scale(1)' : 'scale(0.33)',
-                transition: 'all var(--ifm-transition-fast) ease',
-                transitionDelay: copied ? '75ms' : '0ms',
-              }}
+              className={styles.checkIcon}
             >
               <path
                 fill="currentColor"
@@ -96,24 +57,7 @@ export default function CopyInstallCommand({
       </div>
       <output
         aria-live="polite"
-        style={
-          copied
-            ? {
-                position: 'absolute',
-                width: 1,
-                height: 1,
-                overflow: 'hidden',
-                clipPath: 'inset(50%)',
-                whiteSpace: 'nowrap',
-              }
-            : {
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                fontSize: 11,
-                color: '#59677f',
-              }
-        }
+        className={copied ? styles.srOnly : styles.copyStatus}
       >
         {status}
       </output>
