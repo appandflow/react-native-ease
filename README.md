@@ -1,4 +1,4 @@
-<img width="100%" height="auto" alt="react-native-ease by App & Flow" src="https://github.com/user-attachments/assets/8006ed51-d373-4c97-9e80-9937eb9a569e" />
+<img width="100%" height="auto" alt="Native Animations with React Native Ease, maintained by App & Flow" src="docs/static/img/github-banner.png" />
 
 Lightweight declarative animations powered by platform APIs. Uses Core Animation on iOS and Animator on Android — zero JS overhead.
 
