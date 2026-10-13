@@ -2,7 +2,7 @@
 
 Docusaurus website for `react-native-ease`.
 
-This site is published with GitHub Pages from the `gh-pages` branch.
+This site is deployed to [rne.appandflow.com](https://rne.appandflow.com) by Vercel on every push to `main`. Pull requests get a preview deployment.
 
 ## Local development
 

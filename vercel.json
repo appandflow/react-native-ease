@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "yarn workspaces focus docs",
+  "buildCommand": "yarn workspace docs build",
+  "outputDirectory": "docs/build",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- docs vercel.json"
+}
