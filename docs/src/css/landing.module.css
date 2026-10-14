@@ -565,6 +565,9 @@
     width: 12px;
     height: 12px;
   }
+  .githubLink {
+    margin-left: 6px;
+  }
   .productName {
     display: none;
   }
