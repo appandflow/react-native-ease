@@ -14,7 +14,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: #f0f0f0;
+  background: #ededed;
   pointer-events: none;
 }
 
@@ -30,7 +30,7 @@
   gap: 16px;
   min-height: 103px;
   padding: 24px var(--ease-inset);
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #ededed;
   font-size: 12px;
   line-height: 1.4;
 }
@@ -101,11 +101,17 @@
 
 .getStarted,
 .getStarted:hover {
-  padding: 8px 16px;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding: 0 32px;
   border-radius: 40px;
   background: #121212;
   color: #fff;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -342,8 +348,8 @@
 
 .copyIcons {
   display: grid;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
 }
 
 .copyIcon {
@@ -393,7 +399,7 @@
   right: calc(-100vw + var(--ease-inset) + 100%);
   bottom: 0;
   height: 1px;
-  background: #f0f0f0;
+  background: #ededed;
   pointer-events: none;
 }
 .phone {
@@ -424,8 +430,8 @@
   outline-offset: 5px;
   border-radius: 3px;
 }
-.copyButton {
-  transition: transform 200ms ease;
+.copyIcons {
+  transition: transform var(--ifm-transition-fast) ease;
 }
 .page .getStarted {
   text-decoration: none;
@@ -437,39 +443,91 @@
 .getStarted:active {
   transform: scale(0.96);
 }
-@media (hover: hover) {
-  .copyButton:hover {
-    transform: scale(1.15);
+@media (hover: hover) and (pointer: fine) {
+  .copyButton:hover .copyIcons {
+    transform: scale(1.1);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .bottomSheetEnter {
     animation: none;
   }
-  .copyButton {
+  .copyIcons {
     transition: none;
   }
   .page .getStarted {
     transition: none;
   }
 }
-@media (min-width: 801px) {
-  .phone {
-    position: sticky;
-    top: 24px;
-    width: min(100%, calc((100dvh - 48px) * 336 / 780));
+@media (min-width: 761px) {
+  .page {
+    --ease-rail: 108px;
+    --ease-inset: calc(var(--ease-rail) + 31px);
   }
-}
-@media (max-width: 1100px) {
+  .pageGuide {
+    left: var(--ease-rail);
+  }
+  .mark {
+    left: 41px;
+    top: 41px;
+  }
+  .mark img {
+    display: block;
+  }
+  .navigation {
+    line-height: 1.7;
+  }
+  .contentRail {
+    margin-left: calc(var(--ease-rail) + 1px);
+  }
   .grid {
-    column-gap: 32px;
-    grid-template-columns: minmax(0, 1fr) 300px;
+    max-width: 1492px;
+    margin: 0 auto;
+    padding: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    column-gap: 0;
+  }
+  .hero {
+    padding: 40px 30px 72px;
+  }
+  .hero::after {
+    left: -100vw;
+    right: -100vw;
+  }
+  .features {
+    padding: 40px 30px 64px;
+  }
+  .phoneStage {
+    grid-area: phone;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    margin-top: -103px;
+    padding: 24px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: start;
+    z-index: 1;
   }
   .phone {
+    position: relative;
+    width: min(
+      calc(718px * 1006 / 2152),
+      calc(100% * 1006 / 2152),
+      calc((100dvh - 72px) * 1006 / 2340)
+    );
+    align-self: center;
+    margin: 0;
     transform: none;
   }
 }
-@media (max-width: 800px) {
+@media (min-width: 761px) and (max-width: 1050px) {
+  .page {
+    --ease-rail: 64px;
+  }
+}
+@media (max-width: 760px) {
   .page {
     --ease-inset: 23px;
   }
@@ -477,9 +535,13 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'hero' 'phone' 'features';
   }
+  .phoneStage {
+    grid-area: phone;
+  }
   .phone {
     width: 210px;
     margin: 24px auto 32px;
+    transform: none;
   }
   .navigation {
     display: grid;
@@ -487,7 +549,7 @@
     height: 53px;
     min-height: 0;
     margin-top: 56px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #ededed;
     padding: 0 23px 0 0;
     gap: 0 16px;
   }
@@ -497,7 +559,7 @@
     justify-content: center;
     align-self: stretch;
     align-items: center;
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid #ededed;
   }
   .mark img {
     width: 12px;
@@ -541,7 +603,7 @@
     top: 0;
     left: calc(-1 * var(--ease-inset));
     right: calc(-1 * var(--ease-inset));
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #ededed;
   }
   .features > div {
     gap: 48px;
@@ -667,4 +729,32 @@
   left: 0;
   font-size: 11px;
   color: #59677f;
+}
+
+.page .githubLink:hover,
+.page .licenseLink:hover {
+  text-decoration: none;
+}
+.githubLink:hover .versionLabel {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@keyframes getStartedSquish {
+  33% {
+    transform: scale(1.02, 0.98);
+  }
+  66% {
+    transform: scale(0.99, 1.01);
+  }
+}
+
+.getStarted {
+  transform-origin: bottom center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .getStarted:hover {
+    animation: getStartedSquish 300ms ease-out;
+  }
 }

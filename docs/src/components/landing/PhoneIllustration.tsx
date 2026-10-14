@@ -29,7 +29,7 @@ export default function PhoneIllustration(): React.ReactElement {
     if (introStarted) return;
     const phone = phoneContainer.current;
     if (!phone) return;
-    const desktop = window.matchMedia('(min-width: 801px)');
+    const desktop = window.matchMedia('(min-width: 761px)');
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry && entry.intersectionRatio >= 0.5) {
@@ -71,44 +71,46 @@ export default function PhoneIllustration(): React.ReactElement {
     }
   }, []);
   return (
-    <figure ref={phoneContainer} className={styles.phone}>
-      <Illustration
-        file="phone.png"
-        alt="Phone outline"
-        width={336}
-        height={780}
-        className={styles.responsiveImage}
-      />
-      <TopIsland
-        active={introPhase !== 'logo'}
-        onExpansionComplete={handleIslandExpansionComplete}
-        onCountComplete={handleIslandCountComplete}
-      />
-      <RNLogo
-        active={introStarted || introPhase === 'done'}
-        onEntranceComplete={handleLogoEntranceComplete}
-      />
-      <div ref={sheetContainer} className={styles.sheetClip}>
+    <div className={styles.phoneStage}>
+      <figure ref={phoneContainer} className={styles.phone}>
         <Illustration
-          file="bottom-sheet.png"
-          alt="Ease versus Reanimated latency comparison"
-          width={894}
-          height={723}
-          onLoad={() => setSheetLoaded(true)}
-          className={[
-            styles.bottomSheet,
-            showSheet ? styles.bottomSheetEnter : undefined,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          onAnimationEnd={(event) => {
-            if (event.target === event.currentTarget) {
-              setIntroPhase((phase) => (phase === 'sheet' ? 'done' : phase));
-            }
-          }}
-          data-visible={showSheet}
+          file="phone.png"
+          alt="Phone outline"
+          width={336}
+          height={780}
+          className={styles.responsiveImage}
         />
-      </div>
-    </figure>
+        <TopIsland
+          active={introPhase !== 'logo'}
+          onExpansionComplete={handleIslandExpansionComplete}
+          onCountComplete={handleIslandCountComplete}
+        />
+        <RNLogo
+          active={introStarted || introPhase === 'done'}
+          onEntranceComplete={handleLogoEntranceComplete}
+        />
+        <div ref={sheetContainer} className={styles.sheetClip}>
+          <Illustration
+            file="bottom-sheet.png"
+            alt="Ease versus Reanimated latency comparison"
+            width={894}
+            height={723}
+            onLoad={() => setSheetLoaded(true)}
+            className={[
+              styles.bottomSheet,
+              showSheet ? styles.bottomSheetEnter : undefined,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onAnimationEnd={(event) => {
+              if (event.target === event.currentTarget) {
+                setIntroPhase((phase) => (phase === 'sheet' ? 'done' : phase));
+              }
+            }}
+            data-visible={showSheet}
+          />
+        </div>
+      </figure>
+    </div>
   );
 }
