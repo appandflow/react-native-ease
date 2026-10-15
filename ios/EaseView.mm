@@ -285,6 +285,11 @@ static std::string lowestTransformPropertyName(int mask) {
     _loopAnimations = [NSMutableDictionary dictionary];
     _delegateProxy = [EaseAnimationDelegateProxy new];
     _delegateProxy.target = self;
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(applicationDidBecomeActive)
+               name:UIApplicationDidBecomeActiveNotification
+             object:nil];
   }
   return self;
 }
@@ -517,6 +522,9 @@ static std::string lowestTransformPropertyName(int mask) {
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
   for (NSString *key in _loopAnimations) {
+    if ([self.layer animationForKey:key] != nil) {
+      continue;
+    }
     // Increment to balance the eventual animationDidStop callback when the
     // view detaches again (or the loop is replaced).
     _pendingAnimationCount++;
@@ -1389,6 +1397,20 @@ static std::string lowestTransformPropertyName(int mask) {
     }
     [self reapplyLoopAnimations];
   }
+}
+
+// Core Animation drops a layer's animations while the app is in the
+// background, and only accepts them again once the app is active. The view
+// never leaves its window, so didMoveToWindow doesn't replay the loops.
+- (void)applicationDidBecomeActive {
+  if (self.window == nil || _isFirstMount || _loopAnimations.count == 0) {
+    return;
+  }
+  if (_props) {
+    [self removeStaleLoopAnimationsForProps:*std::static_pointer_cast<
+                                                const EaseViewProps>(_props)];
+  }
+  [self reapplyLoopAnimations];
 }
 
 - (void)invalidateLayer {
