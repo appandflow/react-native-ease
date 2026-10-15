@@ -5,6 +5,8 @@ Lightweight declarative animations powered by platform APIs. Uses Core Animation
 ## About
 App & Flow is a Montreal-based React Native engineering and consulting studio. We partner with the world’s top companies and are recommended by [Expo](https://expo.dev/consultants). Need a hand? Let’s build together. team@appandflow.com
 
+Visit the [React Native Ease website](https://rne.appandflow.com).
+
 ## Demo
 
 ![ease-demo](https://github.com/user-attachments/assets/09658b07-803e-4b7e-a23c-831a6c63df84)
