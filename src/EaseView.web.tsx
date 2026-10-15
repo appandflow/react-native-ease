@@ -345,14 +345,15 @@ function readComputedValues(
   // A 3D (perspective) matrix doesn't decompose into these components, so
   // transforms then report their targets.
   const m = matrix.is2D ? matrix : null;
-  const scaleX = m ? Math.hypot(m.a, m.b) : undefined;
+  // The style lists scale before rotate, so the linear part is S·R.
+  const scaleX = m ? Math.hypot(m.a, m.c) : undefined;
   const transform: Partial<Record<keyof AnimateProps, number | undefined>> = {
     translateX: m?.e,
     translateY: m?.f,
     scaleX,
-    scaleY: m && scaleX ? (m.a * m.d - m.b * m.c) / scaleX : undefined,
+    scaleY: m ? Math.hypot(m.b, m.d) : undefined,
     scale: scaleX,
-    rotate: m ? (Math.atan2(m.b, m.a) * 180) / Math.PI : undefined,
+    rotate: m ? (Math.atan2(-m.c, m.a) * 180) / Math.PI : undefined,
   };
   for (const key of Object.keys(animate) as (keyof AnimateProps)[]) {
     if (animate[key] == null) continue;
@@ -573,10 +574,13 @@ export function EaseView({
   useLayoutEffect(() => {
     const el = getElement();
     if (!el) return;
-    setAnimationsPaused(el, paused);
-    const justPaused = paused && !wasPausedRef.current;
+    const wasPaused = wasPausedRef.current;
     wasPausedRef.current = paused;
-    if (justPaused && onPaused) {
+    // getAnimations() flushes styles, which would start this render's
+    // transitions before the effect below has applied their `transition`.
+    if (!paused && !wasPaused) return;
+    setAnimationsPaused(el, paused);
+    if (paused && !wasPaused && onPaused) {
       // pause() takes effect on the next frame; read the values it holds.
       const pending =
         typeof el.getAnimations === 'function'
