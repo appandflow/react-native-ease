@@ -16,6 +16,14 @@
         {
           "root": "./app"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
       ]
     ],
     "web": {
