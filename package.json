@@ -1,6 +1,6 @@
 {
   "name": "react-native-ease",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Lightweight declarative animations powered by platform APIs",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
