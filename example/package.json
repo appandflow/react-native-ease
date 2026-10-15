@@ -52,7 +52,7 @@
     "node": ">=20"
   },
   "resolutions": {
-    "@react-native/gradle-plugin": "0.86.3"
+    "@react-native/gradle-plugin": "0.83.0"
   },
   "reanimated": {
     "staticFeatureFlags": {
