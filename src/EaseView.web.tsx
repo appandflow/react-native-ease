@@ -412,6 +412,7 @@ export function EaseView({
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
   const wasPausedRef = useRef(false);
+  const pauseTokenRef = useRef(0);
 
   const getElement = useCallback(
     () => viewRef.current as unknown as HTMLElement | null,
@@ -461,7 +462,9 @@ export function EaseView({
           .join(', ') || 'none';
 
   // Apply CSS transition/animation properties imperatively (not in RN style spec).
-  useEffect(() => {
+  // A transition takes the `transition` value in effect when the style
+  // change is computed, so set it before the browser can flush this render.
+  useLayoutEffect(() => {
     const el = getElement();
     if (!el) return;
 
@@ -581,18 +584,28 @@ export function EaseView({
     if (!paused && !wasPaused) return;
     setAnimationsPaused(el, paused);
     if (paused && !wasPaused && onPaused) {
+      const token = ++pauseTokenRef.current;
       // pause() takes effect on the next frame; read the values it holds.
       const pending =
         typeof el.getAnimations === 'function'
           ? el.getAnimations().map((animation) => animation.ready)
           : [];
       Promise.allSettled(pending).then(() => {
-        if (pausedRef.current) {
+        if (pauseTokenRef.current === token && pausedRef.current) {
           onPaused({ values: readComputedValues(el, animate) });
         }
       });
+    } else if (!paused) {
+      pauseTokenRef.current++;
     }
   });
+
+  useEffect(
+    () => () => {
+      pauseTokenRef.current++;
+    },
+    [],
+  );
 
   // Build animated style using RN transform array format.
   // react-native-web converts these to CSS transform strings.

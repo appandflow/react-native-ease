@@ -34,6 +34,7 @@ export function PauseDemo() {
   const countLoadStart = useCallback(() => setLoadStarts((n) => n + 1), []);
 
   const [moved, setMoved] = useState(false);
+  const [enterKey, setEnterKey] = useState(0);
   const [boxValues, setBoxValues] = useState<AnimatedValues | null>(null);
 
   return (
@@ -106,6 +107,22 @@ export function PauseDemo() {
         <Text style={styles.readout}>timing box: {format(boxValues)}</Text>
         <Button label="Move" onPress={() => setMoved((m) => !m)} />
       </Section>
+
+      <Section title="Enter while paused">
+        <EaseView
+          key={enterKey}
+          initialAnimate={{ opacity: 0, translateX: -40 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          transition={{ type: 'timing', duration: 800 }}
+          paused={paused}
+          style={[styles.box, styles.enterBox]}
+        />
+        <Text style={styles.readout}>
+          Mounted while paused, it waits at its initial values and enters once
+          resumed.
+        </Text>
+        <Button label="Remount" onPress={() => setEnterKey((k) => k + 1)} />
+      </Section>
     </>
   );
 }
@@ -155,5 +172,8 @@ const styles = StyleSheet.create({
   },
   springBox: {
     backgroundColor: '#e94560',
+  },
+  enterBox: {
+    backgroundColor: '#7ed321',
   },
 });

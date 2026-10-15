@@ -235,11 +235,11 @@ While paused:
 
 - Changing `animate` starts the new animations from the frozen values; they play once resumed. A `delay` counts from the resume.
 - `transition: { type: 'none' }` still applies its values immediately, as does removing a property from `animate`.
-- Toggling `paused` is a prop update, so like any re-render it reports in-flight non-looping animations to `onTransitionEnd` as interrupted.
+- Toggling `paused` is a prop update, so like any re-render it reports in-flight non-looping animations to `onTransitionEnd` as interrupted, and their completion after the resume is not reported.
 
 Platform notes:
 
-- **iOS** stops the view layer's Core Animation clock, so Core Animation animations of descendant views pause too. `rotate` values come from the presentation transform, normalized to (-180, 180].
+- **iOS** stops the view layer's Core Animation clock, so Core Animation animations of descendant views pause too. After a resume that clock runs behind `CACurrentMediaTime()`, so a descendant animation that sets its `beginTime` from `CACurrentMediaTime()` instead of its layer's time starts late. `rotate` values come from the presentation transform, normalized to (-180, 180].
 - **Android** pauses timing animators in place. `SpringAnimation` can't pause, so a spring stops and restarts from the same value and velocity on resume.
 - **Web** pauses the element's own CSS transitions and animations. Changing a loop's `animate` restarts it from `initialAnimate`, paused or not. With `rotateX`/`rotateY` (3D transforms), transform values in `onPaused` report their targets.
 

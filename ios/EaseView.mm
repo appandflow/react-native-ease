@@ -281,7 +281,7 @@ static std::string lowestTransformPropertyName(int mask) {
   // react-navigation tab switches), so we re-add these on re-attach.
   // Each saved animation has an explicit beginTime, which iOS preserves
   // through addAnimation's copy — so phase continues seamlessly via
-  // (currentMediaTime - beginTime) mod period.
+  // (layer time - beginTime) mod period.
   NSMutableDictionary<NSString *, CAAnimation *> *_loopAnimations;
   EaseAnimationDelegateProxy *_delegateProxy;
   // `paused` stops the layer's local clock (speed 0). Explicit beginTimes
@@ -1016,6 +1016,10 @@ static std::string lowestTransformPropertyName(int mask) {
     return;
   }
   const auto &p = *std::static_pointer_cast<const EaseViewProps>(_props);
+  // The run loop may not have committed the transaction that added the
+  // paused animations yet; the presentation layer only reflects committed
+  // ones.
+  [CATransaction flush];
   CALayer *layer = self.layer;
   CALayer *pl = layer.presentationLayer ?: layer;
   // A composed transform carrying m34 can't be reliably decomposed, so read
