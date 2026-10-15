@@ -11,6 +11,8 @@ export type {
   NoneTransition,
   EasingType,
   TransitionEndEvent,
+  PausedEvent,
+  AnimatedValues,
   TransformOrigin,
   TransformPerspective,
 } from './types';

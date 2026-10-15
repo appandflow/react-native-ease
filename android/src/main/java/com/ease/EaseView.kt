@@ -7,6 +7,7 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Outline
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.animation.PathInterpolator
@@ -293,6 +294,7 @@ class EaseView(context: Context) : ReactViewGroup(context) {
 
     // --- Event callback ---
     var onTransitionEnd: ((finished: Boolean) -> Unit)? = null
+    var onPaused: ((values: PausedValues) -> Unit)? = null
     private var activeAnimationCount: Int = 0
     private var animationBatchId: Int = 0
     private var pendingBatchAnimationCount: Int = 0
@@ -332,7 +334,39 @@ class EaseView(context: Context) : ReactViewGroup(context) {
     // --- Running animations ---
     private val runningAnimators = mutableMapOf<String, Animator>()
     private val runningSpringAnimations = mutableMapOf<DynamicAnimation.ViewProperty, SpringAnimation>()
-    private val pendingDelayedRunnables = mutableListOf<Runnable>()
+    private val pendingDelayedRunnables = mutableMapOf<Runnable, Long>()
+
+    // --- Pause ---
+    var pendingPaused: Boolean = false
+    private var isPaused: Boolean = false
+    private val pausedDelayedRunnables = mutableMapOf<Runnable, Long>()
+    // SpringAnimation can't pause: a paused spring is cancelled and restarted
+    // from its last value and velocity, which fully determine its motion.
+    private class SpringState(
+        val toValue: Float,
+        val config: TransitionConfig,
+        val batchId: Int,
+        var value: Float?,
+        var velocity: Float
+    )
+    private val springStates = mutableMapOf<DynamicAnimation.ViewProperty, SpringState>()
+    private val pausedSprings = mutableMapOf<DynamicAnimation.ViewProperty, SpringState>()
+
+    data class PausedValues(
+        val opacity: Float,
+        val translateX: Float,
+        val translateY: Float,
+        val scaleX: Float,
+        val scaleY: Float,
+        val rotate: Float,
+        val rotateX: Float,
+        val rotateY: Float,
+        val borderRadius: Float,
+        val backgroundColor: Int,
+        val borderWidth: Float,
+        val borderColor: Int,
+        val elevation: Float
+    )
 
     // --- Animated properties bitmask (set by ViewManager) ---
     var animatedProperties: Int = 0
@@ -831,7 +865,7 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         }
 
         runningAnimators["backgroundColor"] = animator
-        animator.start()
+        startAnimator(animator)
     }
 
     private fun animateBorderColorTransition(fromColor: Int, toColor: Int, config: TransitionConfig, loop: Boolean = false) {
@@ -875,7 +909,7 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         }
 
         runningAnimators["borderColor"] = animator
-        animator.start()
+        startAnimator(animator)
     }
 
     private fun animateProperty(
@@ -962,7 +996,7 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         }
 
         runningAnimators[propertyName] = animator
-        animator.start()
+        startAnimator(animator)
     }
 
     private fun animateSpring(viewProperty: DynamicAnimation.ViewProperty, toValue: Float, config: TransitionConfig) {
@@ -975,17 +1009,11 @@ class EaseView(context: Context) : ReactViewGroup(context) {
             }
         }
         runningSpringAnimations.remove(viewProperty)
+        springStates.remove(viewProperty)
+        pausedSprings.remove(viewProperty)
 
         val batchId = animationBatchId
         pendingBatchAnimationCount++
-
-        val needsBackfaceUpdate = (viewProperty == DynamicAnimation.ROTATION ||
-            viewProperty == DynamicAnimation.ROTATION_X ||
-            viewProperty == DynamicAnimation.ROTATION_Y) &&
-            (animatedProperties and MASK_OPACITY == 0)
-
-        val dampingRatio = (config.damping / (2.0f * sqrt(config.stiffness * config.mass)))
-            .coerceAtLeast(0.01f)
 
         // translationX/Y animate in pixels, so a DIP/s velocity has to be converted
         // the same way the target value is in EaseViewManager. Every other property
@@ -995,16 +1023,54 @@ class EaseView(context: Context) : ReactViewGroup(context) {
                 PixelUtil.toPixelFromDIP(config.velocity)
             else -> config.velocity
         }
+        val state = SpringState(toValue, config, batchId, null, startVelocity)
+        springStates[viewProperty] = state
+
+        if (config.delay > 0) {
+            val runnable = object : Runnable {
+                override fun run() {
+                    pendingDelayedRunnables.remove(this)
+                    if (springStates[viewProperty] === state) startSpring(viewProperty, state)
+                }
+            }
+            if (isPaused) {
+                pausedDelayedRunnables[runnable] = config.delay
+            } else {
+                pendingDelayedRunnables[runnable] = SystemClock.uptimeMillis() + config.delay
+                postDelayed(runnable, config.delay)
+            }
+        } else if (isPaused) {
+            pausedSprings[viewProperty] = state
+        } else {
+            startSpring(viewProperty, state)
+        }
+    }
+
+    private fun startSpring(viewProperty: DynamicAnimation.ViewProperty, state: SpringState) {
+        val config = state.config
+        val toValue = state.toValue
+        val batchId = state.batchId
+
+        val needsBackfaceUpdate = (viewProperty == DynamicAnimation.ROTATION ||
+            viewProperty == DynamicAnimation.ROTATION_X ||
+            viewProperty == DynamicAnimation.ROTATION_Y) &&
+            (animatedProperties and MASK_OPACITY == 0)
+
+        val dampingRatio = (config.damping / (2.0f * sqrt(config.stiffness * config.mass)))
+            .coerceAtLeast(0.01f)
 
         val spring = SpringAnimation(this, viewProperty).apply {
             spring = SpringForce(toValue).apply {
                 this.dampingRatio = dampingRatio
                 this.stiffness = config.stiffness
             }
-            if (startVelocity != 0f) {
-                setStartVelocity(startVelocity)
+            state.value?.let { setStartValue(it) }
+            if (state.velocity != 0f) {
+                setStartVelocity(state.velocity)
             }
-            addUpdateListener { _, _, _ ->
+            addUpdateListener { _, value, velocity ->
+                state.value = value
+                state.velocity = velocity
                 // First update — enable hardware layer
                 if (activeAnimationCount == 0) {
                     this@EaseView.onEaseAnimationStart()
@@ -1015,6 +1081,9 @@ class EaseView(context: Context) : ReactViewGroup(context) {
             }
             addEndListener { _, canceled, _, _ ->
                 this@EaseView.onEaseAnimationEnd()
+                // cancel() reports here; a pause cancels only to restart on resume.
+                if (canceled && pausedSprings[viewProperty] === state) return@addEndListener
+                if (springStates[viewProperty] === state) springStates.remove(viewProperty)
                 if (batchId == animationBatchId) {
                     if (canceled) anyInterrupted = true
                     pendingBatchAnimationCount--
@@ -1027,20 +1096,70 @@ class EaseView(context: Context) : ReactViewGroup(context) {
 
         onEaseAnimationStart()
         runningSpringAnimations[viewProperty] = spring
-        if (config.delay > 0) {
-            val runnable = Runnable { spring.start() }
-            pendingDelayedRunnables.add(runnable)
-            postDelayed(runnable, config.delay)
+        spring.start()
+    }
+
+    private fun startAnimator(animator: Animator) {
+        animator.start()
+        if (isPaused) animator.pause()
+    }
+
+    fun applyPaused(paused: Boolean) {
+        if (paused == isPaused) return
+        isPaused = paused
+        val now = SystemClock.uptimeMillis()
+        if (paused) {
+            for (animator in runningAnimators.values) animator.pause()
+            for ((runnable, dueAt) in pendingDelayedRunnables) {
+                removeCallbacks(runnable)
+                pausedDelayedRunnables[runnable] = (dueAt - now).coerceAtLeast(0)
+            }
+            pendingDelayedRunnables.clear()
+            for ((viewProperty, spring) in runningSpringAnimations) {
+                val state = springStates[viewProperty] ?: continue
+                if (!spring.isRunning) continue
+                state.value = viewProperty.getValue(this)
+                pausedSprings[viewProperty] = state
+                spring.cancel()
+            }
+            onPaused?.invoke(currentValues())
         } else {
-            spring.start()
+            for (animator in runningAnimators.values) animator.resume()
+            for ((runnable, remaining) in pausedDelayedRunnables) {
+                pendingDelayedRunnables[runnable] = now + remaining
+                postDelayed(runnable, remaining)
+            }
+            pausedDelayedRunnables.clear()
+            val resumed = pausedSprings.toMap()
+            pausedSprings.clear()
+            for ((viewProperty, state) in resumed) startSpring(viewProperty, state)
         }
     }
 
+    private fun currentValues(): PausedValues = PausedValues(
+        opacity = alpha,
+        translateX = PixelUtil.toDIPFromPixel(translationX),
+        translateY = PixelUtil.toDIPFromPixel(translationY),
+        scaleX = scaleX,
+        scaleY = scaleY,
+        rotate = rotation,
+        rotateX = rotationX,
+        rotateY = rotationY,
+        borderRadius = PixelUtil.toDIPFromPixel(_borderRadius),
+        backgroundColor = currentBackgroundColor,
+        borderWidth = _borderWidth,
+        borderColor = currentBorderColor,
+        elevation = PixelUtil.toDIPFromPixel(elevation)
+    )
+
     private fun cancelAllAnimations() {
-        for (runnable in pendingDelayedRunnables) {
+        for (runnable in pendingDelayedRunnables.keys) {
             removeCallbacks(runnable)
         }
         pendingDelayedRunnables.clear()
+        pausedDelayedRunnables.clear()
+        springStates.clear()
+        pausedSprings.clear()
         for (animator in runningAnimators.values) {
             animator.cancel()
         }
@@ -1081,6 +1200,8 @@ class EaseView(context: Context) : ReactViewGroup(context) {
             "rotationY" -> DynamicAnimation.ROTATION_Y
             else -> return
         }
+        springStates.remove(viewProperty)
+        pausedSprings.remove(viewProperty)
         runningSpringAnimations[viewProperty]?.let { spring ->
             if (spring.isRunning) {
                 spring.cancel()
@@ -1090,10 +1211,13 @@ class EaseView(context: Context) : ReactViewGroup(context) {
     }
 
     fun stopAnimations() {
-        for (runnable in pendingDelayedRunnables) {
+        for (runnable in pendingDelayedRunnables.keys) {
             removeCallbacks(runnable)
         }
         pendingDelayedRunnables.clear()
+        pausedDelayedRunnables.clear()
+        springStates.clear()
+        pausedSprings.clear()
         for (animator in runningAnimators.values) {
             animator.cancel()
         }
@@ -1147,6 +1271,8 @@ class EaseView(context: Context) : ReactViewGroup(context) {
         outlineProvider = ViewOutlineProvider.BACKGROUND
 
         transformPerspective = 1280f
+        isPaused = false
+        pendingPaused = false
         isFirstMount = true
         transitionConfigs = emptyMap()
     }

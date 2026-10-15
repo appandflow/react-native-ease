@@ -408,6 +408,34 @@ Timing animations can loop infinitely. Use `'repeat'` to restart from the beginn
 
 Loop requires `initialAnimate` to define the starting value. Spring animations do not support looping.
 
+### Pausing Animations
+
+Set `paused` to freeze a view's running animations, loops included, where they are. Setting it back to `false` resumes them from the same point. Nothing is remounted, so children (and their images) are untouched.
+
+```tsx
+<EaseView
+  initialAnimate={{ translateX: 0 }}
+  animate={{ translateX: -300 }}
+  transition={{ type: 'timing', duration: 3000, easing: 'linear', loop: 'repeat' }}
+  paused={touching}
+  onPaused={({ values }) => console.log(values.translateX)}
+/>
+```
+
+`onPaused` fires each time `paused` becomes `true`, with the values on screen at that moment for the keys set in `animate` (colors as `rgba()` strings).
+
+While paused:
+
+- Changing `animate` starts the new animations from the frozen values; they play once resumed. A `delay` counts from the resume.
+- `transition: { type: 'none' }` still applies its values immediately, as does removing a property from `animate`.
+- Toggling `paused` is a prop update, so like any re-render it reports in-flight non-looping animations to `onTransitionEnd` as interrupted.
+
+Platform notes:
+
+- **iOS** stops the view layer's Core Animation clock, so Core Animation animations of descendant views pause too. `rotate` values come from the presentation transform, normalized to (-180, 180].
+- **Android** pauses timing animators in place. `SpringAnimation` can't pause, so a spring stops and restarts from the same value and velocity on resume.
+- **Web** pauses the element's own CSS transitions and animations. With `rotateX`/`rotateY` (3D transforms), transform values in `onPaused` report their targets.
+
 ### Enter Animations
 
 Use `initialAnimate` to set starting values. On mount, the view starts at `initialAnimate` values and animates to `animate` values.
@@ -539,6 +567,8 @@ A `View` that animates property changes using native platform APIs.
 | `initialAnimate`   | `AnimateProps`               | Starting values for enter animations (animates to `animate` on mount)                                                        |
 | `transition`       | `Transition`                 | Animation configuration — a single config (timing, spring, or none) or a [per-property map](#per-property-transitions)        |
 | `onTransitionEnd`  | `(event) => void`            | Called when all animations complete with `{ finished: boolean }`                                                             |
+| `paused`           | `boolean`                    | Freezes running animations in place and resumes them from there when `false`. See [Pausing Animations](#pausing-animations). Default: `false` |
+| `onPaused`         | `(event) => void`            | Called when `paused` takes effect, with `{ values }`: the on-screen values of the keys set in `animate`                       |
 | `transformOrigin`  | `{ x?: number; y?: number }` | Pivot point for scale/rotation as 0–1 fractions. Default: `{ x: 0.5, y: 0.5 }` (center)                                      |
 | `transformPerspective` | `number`                 | Camera distance for 3D transforms (`rotateX`, `rotateY`). See [Transform Perspective](#transform-perspective). Default: `1280` |
 | `useHardwareLayer` | `boolean`                    | Android only — rasterize to GPU texture during animations. See [Hardware Layers](#hardware-layers-android). Default: `false` |

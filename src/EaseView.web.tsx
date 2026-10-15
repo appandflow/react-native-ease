@@ -1,8 +1,16 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { View, type ViewStyle, type StyleProp } from 'react-native';
 import type {
   AnimateProps,
+  AnimatedValues,
   CubicBezier,
+  PausedEvent,
   SingleTransition,
   Transition,
   TransitionEndEvent,
@@ -120,6 +128,8 @@ export type EaseViewProps = {
   initialAnimate?: AnimateProps;
   transition?: Transition;
   onTransitionEnd?: (event: TransitionEndEvent) => void;
+  paused?: boolean;
+  onPaused?: (event: PausedEvent) => void;
   /** No-op on web. */
   useHardwareLayer?: boolean;
   transformOrigin?: TransformOrigin;
@@ -311,6 +321,64 @@ function resolveDuration(transition: SingleTransition | undefined): number {
   return getSpringEasing(d, s, m).duration;
 }
 
+function setAnimationsPaused(el: HTMLElement, paused: boolean) {
+  if (typeof el.getAnimations !== 'function') return;
+  for (const animation of el.getAnimations()) {
+    if (paused) {
+      if (animation.playState === 'running') animation.pause();
+    } else if (animation.playState === 'paused') {
+      animation.play();
+    }
+  }
+}
+
+function readComputedValues(
+  el: HTMLElement,
+  animate: AnimateProps | undefined,
+): AnimatedValues {
+  const values: Record<string, unknown> = {};
+  if (!animate) return values;
+  const computed = getComputedStyle(el);
+  const matrix = new DOMMatrixReadOnly(
+    computed.transform === 'none' ? undefined : computed.transform,
+  );
+  // A 3D (perspective) matrix doesn't decompose into these components, so
+  // transforms then report their targets.
+  const m = matrix.is2D ? matrix : null;
+  const scaleX = m ? Math.hypot(m.a, m.b) : undefined;
+  const transform: Partial<Record<keyof AnimateProps, number | undefined>> = {
+    translateX: m?.e,
+    translateY: m?.f,
+    scaleX,
+    scaleY: m && scaleX ? (m.a * m.d - m.b * m.c) / scaleX : undefined,
+    scale: scaleX,
+    rotate: m ? (Math.atan2(m.b, m.a) * 180) / Math.PI : undefined,
+  };
+  for (const key of Object.keys(animate) as (keyof AnimateProps)[]) {
+    if (animate[key] == null) continue;
+    switch (key) {
+      case 'opacity':
+        values.opacity = parseFloat(computed.opacity);
+        break;
+      case 'borderRadius':
+        values.borderRadius = parseFloat(computed.borderTopLeftRadius);
+        break;
+      case 'borderWidth':
+        values.borderWidth = parseFloat(computed.borderTopWidth);
+        break;
+      case 'backgroundColor':
+        values.backgroundColor = computed.backgroundColor;
+        break;
+      case 'borderColor':
+        values.borderColor = computed.borderTopColor;
+        break;
+      default:
+        values[key] = transform[key] ?? animate[key];
+    }
+  }
+  return values;
+}
+
 /** Counter for unique keyframe names. */
 let keyframeCounter = 0;
 
@@ -319,6 +387,8 @@ export function EaseView({
   initialAnimate,
   transition,
   onTransitionEnd,
+  paused = false,
+  onPaused,
   useHardwareLayer: _useHardwareLayer,
   transformOrigin,
   transformPerspective = 1280,
@@ -338,6 +408,9 @@ export function EaseView({
   // On web, View ref gives us the underlying DOM element.
   const viewRef = useRef<React.ComponentRef<typeof View>>(null);
   const animationNameRef = useRef<string | null>(null);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const wasPausedRef = useRef(false);
 
   const getElement = useCallback(
     () => viewRef.current as unknown as HTMLElement | null,
@@ -413,18 +486,10 @@ export function EaseView({
     return () => el.removeEventListener('transitionend', handler);
   }, [onTransitionEnd, getElement]);
 
-  // Handle loop animations via CSS @keyframes.
-  useEffect(() => {
-    const el = getElement();
-    if (!loopMode || !el) {
-      if (animationNameRef.current) {
-        const cleanEl = getElement();
-        if (cleanEl) cleanEl.style.animation = '';
-        animationNameRef.current = null;
-      }
-      return;
-    }
-
+  // Keyframes for loop mode, as a string so the effect below only restarts
+  // the loop when its content changes, not on every render.
+  let loopFrames: string | null = null;
+  if (loopMode) {
     const fromValues = initialAnimate
       ? resolveAnimateValues(initialAnimate)
       : resolveAnimateValues(undefined);
@@ -438,9 +503,6 @@ export function EaseView({
       toValues,
       uses3D && transformPerspective,
     );
-
-    const name = `ease-loop-${++keyframeCounter}`;
-    animationNameRef.current = name;
 
     // Only include border-radius/background-color in keyframes when explicitly
     // set by the user, to avoid overriding values from the style prop.
@@ -472,31 +534,61 @@ export function EaseView({
       .filter(Boolean)
       .join('; ');
 
-    const keyframes = `@keyframes ${name} { from { ${fromBlock} } to { ${toBlock} } }`;
+    loopFrames = `from { ${fromBlock} } to { ${toBlock} }`;
+  }
+
+  // Handle loop animations via CSS @keyframes.
+  useEffect(() => {
+    const el = getElement();
+    if (!loopMode || !loopFrames || !el) {
+      if (animationNameRef.current) {
+        const cleanEl = getElement();
+        if (cleanEl) cleanEl.style.animation = '';
+        animationNameRef.current = null;
+      }
+      return;
+    }
+
+    const name = `ease-loop-${++keyframeCounter}`;
+    animationNameRef.current = name;
 
     const styleEl = document.createElement('style');
-    styleEl.textContent = keyframes;
+    styleEl.textContent = `@keyframes ${name} { ${loopFrames} }`;
     document.head.appendChild(styleEl);
 
     const direction = loopMode === 'reverse' ? 'alternate' : 'normal';
     el.style.transition = 'none';
     el.style.animation = `${name} ${loopDuration}ms ${loopEasing} infinite ${direction}`;
+    if (pausedRef.current) setAnimationsPaused(el, true);
 
     return () => {
       styleEl.remove();
       el.style.animation = '';
       animationNameRef.current = null;
     };
-  }, [
-    loopMode,
-    animate,
-    initialAnimate,
-    loopDuration,
-    loopEasing,
-    getElement,
-    uses3D,
-    transformPerspective,
-  ]);
+  }, [loopMode, loopFrames, loopDuration, loopEasing, getElement]);
+
+  // A layout effect, so transitions started by this render are paused before
+  // the browser paints a frame of them.
+  useLayoutEffect(() => {
+    const el = getElement();
+    if (!el) return;
+    setAnimationsPaused(el, paused);
+    const justPaused = paused && !wasPausedRef.current;
+    wasPausedRef.current = paused;
+    if (justPaused && onPaused) {
+      // pause() takes effect on the next frame; read the values it holds.
+      const pending =
+        typeof el.getAnimations === 'function'
+          ? el.getAnimations().map((animation) => animation.ready)
+          : [];
+      Promise.allSettled(pending).then(() => {
+        if (pausedRef.current) {
+          onPaused({ values: readComputedValues(el, animate) });
+        }
+      });
+    }
+  });
 
   // Build animated style using RN transform array format.
   // react-native-web converts these to CSS transform strings.
