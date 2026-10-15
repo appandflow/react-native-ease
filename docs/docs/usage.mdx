@@ -240,7 +240,7 @@ While paused:
 Platform notes:
 
 - **iOS** stops the view layer's Core Animation clock, so Core Animation animations of descendant views pause too. After a resume that clock runs behind `CACurrentMediaTime()`, so a descendant animation that sets its `beginTime` from `CACurrentMediaTime()` instead of its layer's time starts late. `rotate` values come from the presentation transform, normalized to (-180, 180].
-- **Android** pauses timing animators in place. `SpringAnimation` can't pause, so a spring stops and restarts from the same value and velocity on resume.
+- **Android** pauses timing animators in place. `ValueAnimator` records the pause one frame after the last value it drew, so a resume can land up to one frame ahead. `SpringAnimation` can't pause, so a spring stops and restarts from the same value and velocity on resume.
 - **Web** pauses the element's own CSS transitions and animations. Changing a loop's `animate` restarts it from `initialAnimate`, paused or not. With `rotateX`/`rotateY` (3D transforms), transform values in `onPaused` report their targets.
 
 ## Enter animations
