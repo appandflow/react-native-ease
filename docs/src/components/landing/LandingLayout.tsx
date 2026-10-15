@@ -22,9 +22,11 @@ export default function LandingLayout({
       <div className={styles.page}>
         <div aria-hidden="true" className={styles.pageGuide} />
         <Navigation />
-        <main id={SkipToContentFallbackId} className={styles.grid}>
-          {children}
-        </main>
+        <div className={styles.contentRail}>
+          <main id={SkipToContentFallbackId} className={styles.grid}>
+            {children}
+          </main>
+        </div>
         <Footer />
       </div>
     </LayoutProvider>

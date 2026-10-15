@@ -24,7 +24,8 @@ export default function Navigation(): React.ReactElement {
         className={styles.githubLink}
       >
         <Illustration file="github.svg" width={16} height={16} />
-        <span aria-hidden="true">·</span> v{packageJson.version}
+        <span aria-hidden="true">·</span>
+        <span className={styles.versionLabel}>v{packageJson.version}</span>
       </Link>
       <Link to="/docs/" className={styles.navLink}>
         Documentation
