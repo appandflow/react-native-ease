@@ -98,6 +98,7 @@ Use this table to convert Reanimated/Animated patterns to EaseView:
 | `Animated.Value` + `Animated.timing`                                                                                      | Same `animate` + `transition` pattern — convert to state-driven                                              |
 | `Animated.Value` + `Animated.spring`                                                                                      | `animate` + `transition={{ type: 'spring' }}` — convert to state-driven                                      |
 | `withDelay(ms, withTiming(...))` or `withDelay(ms, withSpring(...))`                                                      | `transition={{ ..., delay: ms }}` — add `delay` to the transition config                                     |
+| `cancelAnimation(sv)` to freeze, then restart from `sv.value`                                                             | `paused` prop (resumes in place); read the frozen values from `onPaused`                                     |
 | `entering={FadeIn.delay(ms)}` / any entering preset with `.delay()`                                                      | `initialAnimate` + `animate` + `transition={{ ..., delay: ms }}`                                             |
 | Different `withTiming`/`withSpring` per property in `useAnimatedStyle`                                                    | `transition={{ opacity: { type: 'timing', ... }, transform: { type: 'spring', ... } }}` (per-property map)   |
 
@@ -442,6 +443,8 @@ transition={{ type: 'none' }}
 - `initialAnimate` — starting values (animates to `animate` on mount)
 - `transition` — animation config: a single `SingleTransition` (timing/spring/none) OR a `TransitionMap` with category keys (`default`, `transform`, `opacity`, `borderRadius`, `backgroundColor`, `border`, `shadow`)
 - `onTransitionEnd` — callback with `{ finished: boolean }`
+- `paused` — freezes running animations (loops included) in place; `false` resumes them from the same point
+- `onPaused` — callback with `{ values }`, the on-screen values of the `animate` keys when `paused` took effect
 - `transformOrigin` — pivot point as `{ x: 0-1, y: 0-1 }`, default center
 - `useHardwareLayer` — Android GPU optimization (boolean, default false)
 - `className` — NativeWind / Tailwind CSS class string (requires NativeWind in the project)

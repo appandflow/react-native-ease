@@ -82,6 +82,25 @@ export type TransitionEndEvent = {
   finished: boolean;
 };
 
+/**
+ * Values of a view's animated properties as rendered. Keys mirror the
+ * `animate` prop that was set; colors are reported as `rgba()` strings.
+ */
+export type AnimatedValues = Omit<
+  AnimateProps,
+  'backgroundColor' | 'borderColor' | 'shadowColor'
+> & {
+  backgroundColor?: string;
+  borderColor?: string;
+  shadowColor?: string;
+};
+
+/** Event fired once `paused` has frozen the view's animations. */
+export type PausedEvent = {
+  /** The values on screen at the moment the animations were paused. */
+  values: AnimatedValues;
+};
+
 /** Transform origin as 0–1 fractions. Default is center (0.5, 0.5). */
 export type TransformOrigin = {
   /** Horizontal origin. 0 = left, 0.5 = center, 1 = right. @default 0.5 */

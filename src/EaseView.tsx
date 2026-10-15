@@ -1,8 +1,15 @@
-import { StyleSheet, type ViewProps, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  type ViewProps,
+  type ViewStyle,
+} from 'react-native';
 import NativeEaseView, { type NativeProps } from './EaseViewNativeComponent';
 import type {
   AnimateProps,
+  AnimatedValues,
   CubicBezier,
+  PausedEvent,
   SingleTransition,
   Transition,
   TransitionEndEvent,
@@ -194,6 +201,62 @@ function resolveTransitions(transition?: Transition): NativeTransitions {
   return result;
 }
 
+type NativePausedEvent = Parameters<
+  NonNullable<NativeProps['onPaused']>
+>[0]['nativeEvent'];
+
+function argbToRgba(argb: number): string {
+  /* eslint-disable no-bitwise */
+  const c = argb >>> 0;
+  const a = Math.round(((c >>> 24) / 255) * 1000) / 1000;
+  return `rgba(${(c >>> 16) & 0xff}, ${(c >>> 8) & 0xff}, ${c & 0xff}, ${a})`;
+  /* eslint-enable no-bitwise */
+}
+
+/** iOS has no elevation and Android no shadow* animation: those report their target. */
+const IOS_ONLY_KEYS = new Set<keyof AnimateProps>([
+  'shadowOpacity',
+  'shadowRadius',
+  'shadowColor',
+  'shadowOffset',
+]);
+
+function resolvePausedValues(
+  native: NativePausedEvent,
+  animate: AnimateProps | undefined,
+): AnimatedValues {
+  const values: Record<string, unknown> = {};
+  if (!animate) return values;
+  for (const key of Object.keys(animate) as (keyof AnimateProps)[]) {
+    if (animate[key] == null) continue;
+    const unsupported =
+      Platform.OS === 'android' ? IOS_ONLY_KEYS.has(key) : key === 'elevation';
+    if (unsupported) {
+      values[key] = animate[key];
+      continue;
+    }
+    switch (key) {
+      case 'scale':
+        values.scale = native.scaleX;
+        break;
+      case 'backgroundColor':
+      case 'borderColor':
+      case 'shadowColor':
+        values[key] = argbToRgba(native[key]);
+        break;
+      case 'shadowOffset':
+        values.shadowOffset = {
+          width: native.shadowOffsetX,
+          height: native.shadowOffsetY,
+        };
+        break;
+      default:
+        values[key] = native[key];
+    }
+  }
+  return values;
+}
+
 export type EaseViewProps = ViewProps & {
   /** Target values for animated properties. */
   animate?: AnimateProps;
@@ -203,6 +266,19 @@ export type EaseViewProps = ViewProps & {
   transition?: Transition;
   /** Called when all animations complete. Reports whether they finished naturally or were interrupted. */
   onTransitionEnd?: (event: TransitionEndEvent) => void;
+  /**
+   * Freezes the view's running animations (including loops) where they are,
+   * and resumes them from the same point when set back to `false`. Changes to
+   * `animate` while paused start from the frozen values and play once
+   * resumed; `transition: { type: 'none' }` still applies immediately.
+   * @default false
+   */
+  paused?: boolean;
+  /**
+   * Called each time `paused` becomes `true`, with the values on screen at
+   * the moment the animations froze (only the keys set in `animate`).
+   */
+  onPaused?: (event: PausedEvent) => void;
   /**
    * Enable Android hardware layer during animations. The view is rasterized to
    * a GPU texture so animated property changes (opacity, scale, rotation) are
@@ -243,6 +319,8 @@ export function EaseView({
   initialAnimate,
   transition,
   onTransitionEnd,
+  paused = false,
+  onPaused,
   useHardwareLayer = false,
   transformOrigin,
   transformPerspective,
@@ -354,10 +432,17 @@ export function EaseView({
         onTransitionEnd(event.nativeEvent)
     : undefined;
 
+  const handlePaused = onPaused
+    ? (event: { nativeEvent: NativePausedEvent }) =>
+        onPaused({ values: resolvePausedValues(event.nativeEvent, animate) })
+    : undefined;
+
   return (
     <NativeEaseView
       style={cleanStyle}
       onTransitionEnd={handleTransitionEnd}
+      paused={paused}
+      onPaused={handlePaused}
       animatedProperties={animatedProperties}
       animateOpacity={resolved.opacity}
       animateTranslateX={resolved.translateX}

@@ -28,6 +28,13 @@ class EaseViewManager : ReactViewManager() {
                 TransitionEndEvent(surfaceId, view.id, finished)
             )
         }
+        view.onPaused = { values ->
+            val eventDispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, view.id)
+            val surfaceId = UIManagerHelper.getSurfaceId(context)
+            eventDispatcher?.dispatchEvent(
+                PausedEvent(surfaceId, view.id, values)
+            )
+        }
         return view
     }
 
@@ -190,6 +197,13 @@ class EaseViewManager : ReactViewManager() {
         view.initialAnimateElevation = PixelUtil.toPixelFromDIP(value)
     }
 
+    // --- Pause ---
+
+    @ReactProp(name = "paused", defaultBoolean = false)
+    fun setPaused(view: EaseView, value: Boolean) {
+        view.pendingPaused = value
+    }
+
     // --- Hardware layer ---
 
     @ReactProp(name = "useHardwareLayer", defaultBoolean = false)
@@ -220,7 +234,10 @@ class EaseViewManager : ReactViewManager() {
 
     override fun onAfterUpdateTransaction(view: ReactViewGroup) {
         super.onAfterUpdateTransaction(view)
-        (view as? EaseView)?.applyPendingAnimateValues()
+        (view as? EaseView)?.let {
+            it.applyPendingAnimateValues()
+            it.applyPaused(it.pendingPaused)
+        }
     }
 
     override fun onDropViewInstance(view: ReactViewGroup) {
@@ -240,7 +257,8 @@ class EaseViewManager : ReactViewManager() {
 
     override fun getExportedCustomDirectEventTypeConstants(): Map<String, Any>? {
         return mapOf(
-            "onTransitionEnd" to mapOf("registrationName" to "onTransitionEnd")
+            "onTransitionEnd" to mapOf("registrationName" to "onTransitionEnd"),
+            "onPaused" to mapOf("registrationName" to "onPaused")
         )
     }
 
@@ -252,6 +270,34 @@ class EaseViewManager : ReactViewManager() {
         override fun getEventName() = "onTransitionEnd"
         override fun getEventData(): WritableMap = Arguments.createMap().apply {
             putBoolean("finished", finished)
+        }
+    }
+
+    private class PausedEvent(
+        surfaceId: Int,
+        viewId: Int,
+        private val values: EaseView.PausedValues
+    ) : Event<PausedEvent>(surfaceId, viewId) {
+        override fun getEventName() = "onPaused"
+        override fun getEventData(): WritableMap = Arguments.createMap().apply {
+            putDouble("opacity", values.opacity.toDouble())
+            putDouble("translateX", values.translateX.toDouble())
+            putDouble("translateY", values.translateY.toDouble())
+            putDouble("scaleX", values.scaleX.toDouble())
+            putDouble("scaleY", values.scaleY.toDouble())
+            putDouble("rotate", values.rotate.toDouble())
+            putDouble("rotateX", values.rotateX.toDouble())
+            putDouble("rotateY", values.rotateY.toDouble())
+            putDouble("borderRadius", values.borderRadius.toDouble())
+            putInt("backgroundColor", values.backgroundColor)
+            putDouble("borderWidth", values.borderWidth.toDouble())
+            putInt("borderColor", values.borderColor)
+            putDouble("shadowOpacity", 0.0)
+            putDouble("shadowRadius", 0.0)
+            putInt("shadowColor", 0)
+            putDouble("shadowOffsetX", 0.0)
+            putDouble("shadowOffsetY", 0.0)
+            putDouble("elevation", values.elevation.toDouble())
         }
     }
 

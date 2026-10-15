@@ -39,6 +39,23 @@ static inline CGFloat degreesToRadians(CGFloat degrees) {
   return degrees * M_PI / 180.0;
 }
 
+static inline CGFloat radiansToDegrees(CGFloat radians) {
+  return radians * 180.0 / M_PI;
+}
+
+static int32_t argbFromCGColor(CGColorRef color) {
+  if (color == nil) {
+    return 0;
+  }
+  CGFloat r = 0, g = 0, b = 0, a = 0;
+  [[UIColor colorWithCGColor:color] getRed:&r green:&g blue:&b alpha:&a];
+  auto channel = [](CGFloat v) -> uint32_t {
+    return (uint32_t)lround(fmin(fmax(v, 0.0), 1.0) * 255.0);
+  };
+  return (int32_t)((channel(a) << 24) | (channel(r) << 16) | (channel(g) << 8) |
+                   channel(b));
+}
+
 // Compose a full CATransform3D from individual animate values.
 // Order: Scale → RotateY → RotateX → RotateZ → Translate.
 // Default perspective (1280) matches React Native's default.
@@ -264,9 +281,14 @@ static std::string lowestTransformPropertyName(int mask) {
   // react-navigation tab switches), so we re-add these on re-attach.
   // Each saved animation has an explicit beginTime, which iOS preserves
   // through addAnimation's copy — so phase continues seamlessly via
-  // (currentMediaTime - beginTime) mod period.
+  // (layer time - beginTime) mod period.
   NSMutableDictionary<NSString *, CAAnimation *> *_loopAnimations;
   EaseAnimationDelegateProxy *_delegateProxy;
+  // `paused` stops the layer's local clock (speed 0). Explicit beginTimes
+  // are therefore written in layer time, never raw CACurrentMediaTime().
+  BOOL _paused;
+  NSInteger _pauseGeneration;
+  BOOL _pausedEventAwaitsFirstMount;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider {
@@ -334,6 +356,10 @@ static std::string lowestTransformPropertyName(int mask) {
 }
 
 #pragma mark - Animation helpers
+
+- (CFTimeInterval)layerTime {
+  return [self.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+}
 
 - (CATransform3D)presentationTransform {
   CALayer *pl = self.layer.presentationLayer;
@@ -413,13 +439,13 @@ static std::string lowestTransformPropertyName(int mask) {
   BOOL isLooping =
       loop && (config.loop == "repeat" || config.loop == "reverse");
   if (config.delay > 0) {
-    animation.beginTime = CACurrentMediaTime() + (config.delay / 1000.0);
+    animation.beginTime = [self layerTime] + (config.delay / 1000.0);
     animation.fillMode = kCAFillModeBackwards;
   } else if (isLooping) {
     // Set explicit beginTime so the phase survives the addAnimation copy.
     // Without this, re-adding the saved animation later would reset to a
     // fresh "now" and visually restart the loop from the start.
-    animation.beginTime = CACurrentMediaTime();
+    animation.beginTime = [self layerTime];
   }
   [animation setValue:@(_animationBatchId) forKey:@"easeBatchId"];
   animation.delegate = _delegateProxy;
@@ -940,6 +966,115 @@ static std::string lowestTransformPropertyName(int mask) {
   _hasPendingFirstMountUpdate = NO;
   _isFirstMount = NO;
   [CATransaction commit];
+
+  if (_pausedEventAwaitsFirstMount) {
+    _pausedEventAwaitsFirstMount = NO;
+    [self schedulePausedEvent];
+  }
+}
+
+#pragma mark - Pause
+
+// Core Animation pause/resume (Technical Q&A QA1673): stopping the layer's
+// clock freezes every animation on it, loops included, at their current
+// phase. Descendant layers share that clock, so their animations stop too.
+- (void)applyPaused:(BOOL)paused {
+  if (paused == _paused) {
+    return;
+  }
+  _paused = paused;
+  _pauseGeneration++;
+  CALayer *layer = self.layer;
+  if (paused) {
+    CFTimeInterval now = [self layerTime];
+    layer.speed = 0;
+    layer.timeOffset = now;
+    [self schedulePausedEvent];
+  } else {
+    CFTimeInterval pausedTime = layer.timeOffset;
+    layer.speed = 1;
+    layer.timeOffset = 0;
+    layer.beginTime = 0;
+    layer.beginTime = [self layerTime] - pausedTime;
+    _pausedEventAwaitsFirstMount = NO;
+  }
+}
+
+// Animations added in this transaction are only visible to the presentation
+// layer once it commits, so read the frozen values on the next turn.
+- (void)schedulePausedEvent {
+  NSInteger generation = _pauseGeneration;
+  __weak EaseView *weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    EaseView *strongSelf = weakSelf;
+    if (strongSelf == nil || !strongSelf->_paused ||
+        strongSelf->_pauseGeneration != generation) {
+      return;
+    }
+    if (strongSelf->_isFirstMount) {
+      strongSelf->_pausedEventAwaitsFirstMount = YES;
+      return;
+    }
+    [strongSelf emitPausedEvent];
+  });
+}
+
+- (void)emitPausedEvent {
+  if (!_eventEmitter) {
+    return;
+  }
+  const auto &p = *std::static_pointer_cast<const EaseViewProps>(_props);
+  // The run loop may not have committed the transaction that added the
+  // paused animations yet; the presentation layer only reflects committed
+  // ones.
+  [CATransaction flush];
+  CALayer *layer = self.layer;
+  CALayer *pl = layer.presentationLayer ?: layer;
+  // A composed transform carrying m34 can't be reliably decomposed, so read
+  // a transform component from the presentation layer only while its own
+  // animation drives it; otherwise it rests at the prop value.
+  auto component = [&](NSString *key, NSString *keyPath,
+                       CGFloat restingValue) -> CGFloat {
+    if ([layer animationForKey:key] == nil) {
+      return restingValue;
+    }
+    return [[pl valueForKeyPath:keyPath] doubleValue];
+  };
+  CGSize shadowOffset = pl.shadowOffset;
+  auto emitter =
+      std::static_pointer_cast<const EaseViewEventEmitter>(_eventEmitter);
+  emitter->onPaused(EaseViewEventEmitter::OnPaused{
+      .opacity = pl.opacity,
+      .translateX =
+          (Float)component(kAnimKeyTransformTransX, @"transform.translation.x",
+                           p.animateTranslateX),
+      .translateY =
+          (Float)component(kAnimKeyTransformTransY, @"transform.translation.y",
+                           p.animateTranslateY),
+      .scaleX = (Float)component(kAnimKeyTransformScaleX, @"transform.scale.x",
+                                 p.animateScaleX),
+      .scaleY = (Float)component(kAnimKeyTransformScaleY, @"transform.scale.y",
+                                 p.animateScaleY),
+      .rotate = (Float)radiansToDegrees(
+          component(kAnimKeyTransformRotateZ, @"transform.rotation.z",
+                    degreesToRadians(p.animateRotate))),
+      .rotateX = (Float)radiansToDegrees(
+          component(kAnimKeyTransformRotateX, @"transform.rotation.x",
+                    degreesToRadians(p.animateRotateX))),
+      .rotateY = (Float)radiansToDegrees(
+          component(kAnimKeyTransformRotateY, @"transform.rotation.y",
+                    degreesToRadians(p.animateRotateY))),
+      .borderRadius = (Float)pl.cornerRadius,
+      .backgroundColor = argbFromCGColor(pl.backgroundColor),
+      .borderWidth = (Float)pl.borderWidth,
+      .borderColor = argbFromCGColor(pl.borderColor),
+      .shadowOpacity = pl.shadowOpacity,
+      .shadowRadius = (Float)pl.shadowRadius,
+      .shadowColor = argbFromCGColor(pl.shadowColor),
+      .shadowOffsetX = (Float)shadowOffset.width,
+      .shadowOffsetY = (Float)shadowOffset.height,
+      .elevation = p.animateElevation,
+  });
 }
 
 #pragma mark - Props update
@@ -1371,6 +1506,8 @@ static std::string lowestTransformPropertyName(int mask) {
     }
   }
 
+  [self applyPaused:newViewProps.paused];
+
   [CATransaction commit];
 }
 
@@ -1514,6 +1651,12 @@ static std::string lowestTransformPropertyName(int mask) {
   [super prepareForRecycle];
   [self.layer removeAllAnimations];
   [_loopAnimations removeAllObjects];
+  _paused = NO;
+  _pauseGeneration++;
+  _pausedEventAwaitsFirstMount = NO;
+  self.layer.speed = 1;
+  self.layer.timeOffset = 0;
+  self.layer.beginTime = 0;
   _isFirstMount = YES;
   _hasPendingFirstMountUpdate = NO;
   _pendingAnimationCount = 0;

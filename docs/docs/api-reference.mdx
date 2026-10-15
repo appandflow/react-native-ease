@@ -13,6 +13,8 @@ A `View` that animates property changes using native platform APIs.
 | `initialAnimate`   | `AnimateProps`               | Starting values for enter animations |
 | `transition`       | `Transition`                 | Single config or per-property map |
 | `onTransitionEnd`  | `(event) => void`            | Called when all animations complete with `{ finished: boolean }` |
+| `paused`           | `boolean`                    | Freezes running animations in place; resumes them from there when `false`. Default: `false` |
+| `onPaused`         | `(event) => void`            | Called when `paused` takes effect, with `{ values }`: the on-screen values of the keys set in `animate` |
 | `transformOrigin`  | `{ x?: number; y?: number }` | Pivot point for scale/rotation as 0–1 fractions |
 | `transformPerspective` | `number`                 | Camera distance for 3D transforms (`rotateX`, `rotateY`). Default: `1280` |
 | `useHardwareLayer` | `boolean`                    | Android only — rasterize to GPU texture during animations |

@@ -1013,4 +1013,96 @@ describe('EaseView', () => {
       expect(props.transitions.defaultConfig.loop).toBe('reverse');
     });
   });
+
+  describe('paused', () => {
+    const nativeValues = {
+      opacity: 0.4,
+      translateX: -123.5,
+      translateY: 7,
+      scaleX: 1.25,
+      scaleY: 0.75,
+      rotate: 90,
+      rotateX: 0,
+      rotateY: 0,
+      borderRadius: 12,
+      backgroundColor: 0x80ff0000 - 0x100000000,
+      borderWidth: 2,
+      borderColor: 0xff00ff00 - 0x100000000,
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      shadowColor: 0xff0000ff - 0x100000000,
+      shadowOffsetX: 1,
+      shadowOffsetY: 2,
+      elevation: 6,
+    };
+
+    it('defaults to false', () => {
+      render(<EaseView testID="ease" />);
+      expect(getNativeProps().paused).toBe(false);
+    });
+
+    it('passes paused through', () => {
+      render(<EaseView testID="ease" paused />);
+      expect(getNativeProps().paused).toBe(true);
+    });
+
+    it('does not register onPaused when not provided', () => {
+      render(<EaseView testID="ease" />);
+      expect(getNativeProps().onPaused).toBeUndefined();
+    });
+
+    it('reports only the keys set in animate', () => {
+      const onPaused = jest.fn();
+      render(
+        <EaseView
+          testID="ease"
+          animate={{ translateX: -200, opacity: 1 }}
+          onPaused={onPaused}
+        />,
+      );
+      getNativeProps().onPaused({ nativeEvent: nativeValues });
+      expect(onPaused).toHaveBeenCalledWith({
+        values: { translateX: -123.5, opacity: 0.4 },
+      });
+    });
+
+    it('maps scale, shadowOffset and colors', () => {
+      const onPaused = jest.fn();
+      render(
+        <EaseView
+          testID="ease"
+          animate={{
+            scale: 2,
+            backgroundColor: 'red',
+            borderColor: 'green',
+            shadowOffset: { width: 3, height: 3 },
+          }}
+          onPaused={onPaused}
+        />,
+      );
+      getNativeProps().onPaused({ nativeEvent: nativeValues });
+      expect(onPaused.mock.calls[0][0].values).toEqual({
+        scale: 1.25,
+        backgroundColor: 'rgba(255, 0, 0, 0.502)',
+        borderColor: 'rgba(0, 255, 0, 1)',
+        shadowOffset: { width: 1, height: 2 },
+      });
+    });
+
+    it('reports the target for properties iOS does not animate', () => {
+      const onPaused = jest.fn();
+      render(
+        <EaseView
+          testID="ease"
+          animate={{ elevation: 10, opacity: 0.5 }}
+          onPaused={onPaused}
+        />,
+      );
+      getNativeProps().onPaused({ nativeEvent: nativeValues });
+      expect(onPaused.mock.calls[0][0].values).toEqual({
+        elevation: 10,
+        opacity: 0.4,
+      });
+    });
+  });
 });
