@@ -105,12 +105,12 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  height: 52px;
-  padding: 0 32px;
+  height: auto;
+  padding: 8px 16px;
   border-radius: 40px;
   background: #121212;
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
 }
@@ -481,8 +481,8 @@
     margin-left: calc(var(--ease-rail) + 1px);
   }
   .grid {
-    max-width: 1492px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     padding: 0;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
     column-gap: 0;
