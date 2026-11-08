@@ -1664,16 +1664,13 @@ static std::string lowestTransformPropertyName(int mask) {
   _transformOriginX = 0.5;
   _transformOriginY = 0.5;
   _transformPerspective = 1280.0;
-  // Reset only what this view animated. RCTViewComponentView keeps _props
-  // across recycling and diffs the next props against it, so a style value it
-  // applied (overflow, borderRadius, backgroundColor, ...) is not applied again
-  // when the next use has the same value. Resetting those layer properties
-  // here left a reused view unclipped with square corners. Animated properties
-  // belong to this view and are set again by the next first-mount update.
+  // Reset only what this view animated: RCTViewComponentView keeps _props
+  // across recycling and won't re-apply an unchanged style value (overflow,
+  // borderRadius, ...). anchorPoint is ours (transformOrigin), so always reset.
   const auto &oldProps = *std::static_pointer_cast<const EaseViewProps>(_props);
   const int mask = oldProps.animatedProperties;
+  self.layer.anchorPoint = CGPointMake(0.5, 0.5);
   if (mask & kMaskAnyTransform) {
-    self.layer.anchorPoint = CGPointMake(0.5, 0.5);
     self.layer.transform = CATransform3DIdentity;
   }
   if (mask & kMaskOpacity) {
