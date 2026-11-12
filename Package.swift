@@ -38,6 +38,8 @@ let package = Package(
             cSettings: [
                 .define("RCT_NEW_ARCH_ENABLED", to: "1"),
                 .headerSearchPath("spm-headers"),
+                .define("DEBUG", .when(configuration: .debug)),
+                .define("NDEBUG", .when(configuration: .release)),
             ],
             cxxSettings: [
                 .define("RCT_NEW_ARCH_ENABLED", to: "1"),
