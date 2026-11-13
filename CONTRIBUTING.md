@@ -61,6 +61,19 @@ To check formatting:
 yarn format:check
 ```
 
+#### clang-format on Linux arm64
+
+The `clang-format` npm package only bundles binaries for macOS, Linux x64 and Windows. This repo patches it (`.yarn/patches`) so that on other platforms, such as Linux arm64, it falls back to a native binary instead of failing:
+
+1. the binary at `CLANG_FORMAT_BINARY`, if that variable is set, otherwise
+2. the first native `clang-format` executable on your `PATH`.
+
+Install version 13.0.1, which matches the bundled binaries (other versions format differently, and a warning is printed if the version does not match):
+
+```sh
+pip install clang-format==13.0.1
+```
+
 ### Scripts
 
 The root `package.json` contains these common scripts:

@@ -96,7 +96,7 @@
     "@types/jest": "^29.5.14",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19",
-    "clang-format": "^1.8.0",
+    "clang-format": "patch:clang-format@npm%3A1.8.0#~/.yarn/patches/clang-format-npm-1.8.0-018a23e088.patch",
     "commitlint": "^19.8.1",
     "del-cli": "^6.0.0",
     "eslint": "^9.35.0",

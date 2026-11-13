@@ -10666,7 +10666,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"clang-format@npm:^1.8.0":
+"clang-format@npm:1.8.0":
   version: 1.8.0
   resolution: "clang-format@npm:1.8.0"
   dependencies:
@@ -10678,6 +10678,21 @@ __metadata:
     clang-format: index.js
     git-clang-format: bin/git-clang-format
   checksum: 10c0/2bd1b9bc503695e8bf9571902c94759215b72f3d0fd8379e327181dd35df8775f82e8bbc38655554d294c83fcb55c081fe3736d057606bb0d535a87d8f29860e
+  languageName: node
+  linkType: hard
+
+"clang-format@patch:clang-format@npm%3A1.8.0#~/.yarn/patches/clang-format-npm-1.8.0-018a23e088.patch":
+  version: 1.8.0
+  resolution: "clang-format@patch:clang-format@npm%3A1.8.0#~/.yarn/patches/clang-format-npm-1.8.0-018a23e088.patch::version=1.8.0&hash=15a267"
+  dependencies:
+    async: "npm:^3.2.3"
+    glob: "npm:^7.0.0"
+    resolve: "npm:^1.1.6"
+  bin:
+    check-clang-format: bin/check-clang-format.js
+    clang-format: index.js
+    git-clang-format: bin/git-clang-format
+  checksum: 10c0/d4e2bd318f30fade4a0ef53841d402a3303ecdd15c28f188f4799c8e96159492b1d7e9b417b6f10070d8a0c90700d8e19f1655d1ca08aa5c172bfcfaff790514
   languageName: node
   linkType: hard
 
@@ -22302,7 +22317,7 @@ __metadata:
     "@types/jest": "npm:^29.5.14"
     "@types/react": "npm:^19.2.0"
     "@types/react-test-renderer": "npm:^19"
-    clang-format: "npm:^1.8.0"
+    clang-format: "patch:clang-format@npm%3A1.8.0#~/.yarn/patches/clang-format-npm-1.8.0-018a23e088.patch"
     commitlint: "npm:^19.8.1"
     del-cli: "npm:^6.0.0"
     eslint: "npm:^9.35.0"

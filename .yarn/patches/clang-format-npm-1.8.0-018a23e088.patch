@@ -1,0 +1,99 @@
+diff --git a/index.js b/index.js
+index 6e15ed8d81a8b1c8a0d4105592b3e4ceb65e46bd..e7cb69c654afd8968a70f96a561a73ef886a4d74 100755
+--- a/index.js
++++ b/index.js
+@@ -187,12 +187,93 @@ function getNativeBinary() {
+       return nativeBinary;
+     }
+   }
++
++  // Fallback for platforms without a bundled binary (e.g. linux arm64): use
++  // $CLANG_FORMAT_BINARY, else the first native `clang-format` on PATH (shell/JS
++  // shims such as this package's own wrapper are skipped to avoid recursion).
++  const fallback = findSystemBinary();
++  if (fallback) {
++    warnOnVersionMismatch(fallback);
++    return fallback;
++  }
++
+   const message = 'This module doesn\'t bundle the clang-format executable for your platform. ' +
+       `(${platform}_${arch})\n` +
+-      'Consider installing it with your native package manager instead.\n';
++      'Install clang-format 13.0.1 (for example `pip install clang-format==13.0.1`) ' +
++      'and make sure it is on your PATH, or set CLANG_FORMAT_BINARY to its path.\n';
+   throw new Error(message);
+ }
+ 
++function isExecutableFile(file) {
++  try {
++    if (!fs.statSync(file).isFile()) return false;
++    fs.accessSync(file, fs.constants.X_OK);
++    return true;
++  } catch (e) {
++    return false;
++  }
++}
++
++/**
++ * @returns true when the file starts with a `#!` shebang, i.e. it is a script and not a native
++ * binary. Package manager shims (including this package's own `.bin` entry) are scripts that end up
++ * calling this file again, so they must never be picked as the fallback binary.
++ */
++function isScript(file) {
++  let fd;
++  try {
++    fd = fs.openSync(file, 'r');
++    const buf = Buffer.alloc(2);
++    const read = fs.readSync(fd, buf, 0, 2, 0);
++    return read === 2 && buf.toString('latin1') === '#!';
++  } catch (e) {
++    return true;
++  } finally {
++    if (fd !== undefined) fs.closeSync(fd);
++  }
++}
++
++/**
++ * @returns the path of a system clang-format binary, or null when none is found
++ */
++function findSystemBinary() {
++  const fromEnv = process.env.CLANG_FORMAT_BINARY;
++  if (fromEnv) {
++    if (isExecutableFile(fromEnv)) {
++      return fromEnv;
++    }
++    throw new Error(`CLANG_FORMAT_BINARY is set to '${fromEnv}', which is not an executable file.\n`);
++  }
++
++  const exeName = os.platform() === 'win32' ? 'clang-format.exe' : 'clang-format';
++  const dirs = (process.env.PATH || '').split(path.delimiter).filter(Boolean);
++  for (const dir of dirs) {
++    if (dir.split(/[\\/]/).includes('node_modules')) continue;
++    const candidate = path.join(dir, exeName);
++    if (!isExecutableFile(candidate)) continue;
++    // Skip shims, including the temporary wrapper directories package managers put on PATH.
++    if (path.basename(fs.realpathSync(candidate)) === 'index.js' || isScript(candidate)) continue;
++    return candidate;
++  }
++  return null;
++}
++
++function warnOnVersionMismatch(binary) {
++  // The bundled binaries are clang-format 13.0.1; other versions format differently.
++  const expected = '13.0.1';
++  try {
++    const out = require('child_process').spawnSync(binary, ['--version'], {encoding: 'utf8'});
++    const match = /version (\d+\.\d+\.\d+)/.exec(out.stdout || '');
++    if (!match || match[1] !== expected) {
++      console.error(
++          `warning: using ${binary} (${match ? match[1] : 'unknown version'}); ` +
++          `this project expects clang-format ${expected}, other versions may format differently.`);
++    }
++  } catch (e) {
++    // Ignore; spawning the binary later reports any real error.
++  }
++}
++
+ /**
+  * Filters the arguments to return the value of the `--glob=` option.
+  *
