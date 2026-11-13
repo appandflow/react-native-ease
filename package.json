@@ -23,6 +23,8 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "Package.swift",
+    "spm-headers",
     "src",
     "lib",
     "android",
@@ -211,5 +213,8 @@
       "release-it"
     ],
     "version": "0.57.2"
+  },
+  "swiftpmConfig": {
+    "name": "Ease"
   }
 }

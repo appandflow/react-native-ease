@@ -21,6 +21,12 @@ npm install react-native-ease
 yarn add react-native-ease
 ```
 
+### Swift Package Manager (iOS)
+
+The package includes a `Package.swift` for apps that use Swift Package Manager instead of CocoaPods (React Native 0.88 or newer). An app moves to Swift Package Manager with `npx react-native spm add`. After that, React Native links this package automatically, and no extra step is needed.
+
+The Swift Package Manager setup supports iOS only. On tvOS, use CocoaPods.
+
 ### Migration Skill
 
 If you're already using `react-native-reanimated` or React Native's `Animated` API, this project includes an [Agent Skill](https://agentskills.io) that scans your codebase for animations that can be replaced with `react-native-ease` and migrates them automatically.
