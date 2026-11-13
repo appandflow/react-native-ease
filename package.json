@@ -60,8 +60,8 @@
     "release": "release-it --only-version",
     "format:prettier:check": "prettier \"src/**/*.{js,ts,tsx}\" \"example/**/*.{js,ts,tsx}\" --check",
     "format:prettier:write": "yarn format:prettier:check --write",
-    "format:clang:check": "clang-format --dry-run --Werror --glob='{ios,android/src}/**/*.{h,cpp,m,mm}'",
-    "format:clang:write": "clang-format -i --glob='{ios,android/src}/**/*.{h,hpp,cpp,m,mm}'",
+    "format:clang:check": "node scripts/clang-format.mjs --dry-run --Werror --glob='{ios,android/src}/**/*.{h,cpp,m,mm}'",
+    "format:clang:write": "node scripts/clang-format.mjs -i --glob='{ios,android/src}/**/*.{h,hpp,cpp,m,mm}'",
     "format:check": "yarn format:prettier:check && yarn format:clang:check",
     "format:write": "yarn format:prettier:write && yarn format:clang:write"
   },

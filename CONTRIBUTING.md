@@ -61,6 +61,20 @@ To check formatting:
 yarn format:check
 ```
 
+#### clang-format on Linux arm64
+
+The `clang-format` npm package only bundles binaries for macOS, Linux x64 and Windows. `scripts/clang-format.mjs` (used by `yarn format:*`) runs the bundled binary when there is one, and otherwise falls back to a native binary:
+
+1. the binary at `CLANG_FORMAT_BINARY`, if that variable is set (it takes priority on every platform), otherwise
+2. the bundled binary for your platform, otherwise
+3. the first native `clang-format` executable on your `PATH`.
+
+Install version 13.0.1, which matches the bundled binaries (other versions format differently, and a warning is printed if the version of a non-bundled binary does not match):
+
+```sh
+pip install clang-format==13.0.1
+```
+
 ### Scripts
 
 The root `package.json` contains these common scripts:
