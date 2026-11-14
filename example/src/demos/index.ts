@@ -165,6 +165,11 @@ export const demos: Record<string, DemoEntry> = {
     title: 'Issue #66 — Background loops',
     section: 'Issues',
   },
+  'issue-72': {
+    route: '/issues/72',
+    title: 'Issue #72 — Recycled clipping',
+    section: 'Issues',
+  },
   'issue-loop-cancel': {
     route: '/issues/loop-cancel',
     title: 'Audit — Cancelled loop resurrects',

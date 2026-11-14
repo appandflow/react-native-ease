@@ -1664,18 +1664,42 @@ static std::string lowestTransformPropertyName(int mask) {
   _transformOriginX = 0.5;
   _transformOriginY = 0.5;
   _transformPerspective = 1280.0;
+  // Reset only what this view animated: RCTViewComponentView keeps _props
+  // across recycling and won't re-apply an unchanged style value (overflow,
+  // borderRadius, ...). anchorPoint is ours (transformOrigin), so always reset.
+  const auto &oldProps = *std::static_pointer_cast<const EaseViewProps>(_props);
+  const int mask = oldProps.animatedProperties;
   self.layer.anchorPoint = CGPointMake(0.5, 0.5);
-  self.layer.opacity = 1.0;
-  self.layer.transform = CATransform3DIdentity;
-  self.layer.cornerRadius = 0;
-  self.layer.masksToBounds = NO;
-  self.layer.backgroundColor = nil;
-  self.layer.borderWidth = 0;
-  self.layer.borderColor = nil;
-  self.layer.shadowOpacity = 0;
-  self.layer.shadowRadius = 0;
-  self.layer.shadowColor = nil;
-  self.layer.shadowOffset = CGSizeZero;
+  if (mask & kMaskAnyTransform) {
+    self.layer.transform = CATransform3DIdentity;
+  }
+  if (mask & kMaskOpacity) {
+    self.layer.opacity = 1.0;
+  }
+  if (mask & kMaskBorderRadius) {
+    self.layer.cornerRadius = 0;
+  }
+  if (mask & kMaskBackgroundColor) {
+    self.layer.backgroundColor = nil;
+  }
+  if (mask & kMaskBorderWidth) {
+    self.layer.borderWidth = 0;
+  }
+  if (mask & kMaskBorderColor) {
+    self.layer.borderColor = nil;
+  }
+  if (mask & kMaskShadowOpacity) {
+    self.layer.shadowOpacity = 0;
+  }
+  if (mask & kMaskShadowRadius) {
+    self.layer.shadowRadius = 0;
+  }
+  if (mask & kMaskShadowColor) {
+    self.layer.shadowColor = nil;
+  }
+  if (mask & kMaskShadowOffset) {
+    self.layer.shadowOffset = CGSizeZero;
+  }
 }
 
 @end
